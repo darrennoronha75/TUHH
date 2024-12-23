@@ -1,4 +1,1 @@
-print("Hello World")
-print("Second Commit")
-print("Test")
-print("Test3")
+print("Hello")
