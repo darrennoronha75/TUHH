@@ -1,4 +1,17 @@
+# Import necessary libraries
 import numpy as np
+
+
+# Define a function that returns the affine linear combination of the input matrix and the weights plus the bias
+def affine_linear_combination(x, w, b):
+    e = np.ones((1,4))
+    print(b.shape)
+    print(e.shape)
+    return w.T @ x + b.T @ e
+
+# Define ReLU activation function
+def ReLU(x):
+    return np.maximum(0, x)
 
 # Define the input matrix for a logical bivariate function
 # Each column represents a different input combination
@@ -7,6 +20,19 @@ x = np.array([
     [0, 1, 0, 1]
 ])
 
-print(x)
+# Layer 1 - Universal Layer to identify Points
+# Define the weights and bias for the first layer
+w1 = np.array([[-1, -1, 1, 1],
+              [-1, 1, -1, 1]])
 
-# Define the weights for the logical bivariate function
+b1 = np.array([[1, 0, 0, -1]])
+
+# Compute the output of the first layer
+out1 = affine_linear_combination(x, w1, b1)
+print(out1)
+
+# Apply the ReLU activation function to output of the first layer
+activation1 = ReLU(out1)
+
+# Print the activation of the first layer
+print(activation1)
