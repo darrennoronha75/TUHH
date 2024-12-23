@@ -178,3 +178,17 @@ adj_list = {
 }
 calculate_shortest_path(n, nodes, adj_list)
 
+# Adjacency List Definition for Graph - Assignment 09 - Problem 1b
+nodes = ['s','a','b','c','d','e','f','g','t']
+n = len(nodes)
+adj_list = {
+    's': [('a', 4), ('b',6),('c',1),('d',3)],
+    'a': [('d',2),('b',3),('g',4)],
+    'b': [('c',5),('t',3)],
+    'd': [('c',4),('e',2)],
+    'c': [('f',7)],
+    'e': [('f',3),('g',2)],
+    'f': [('t',1)],
+    'g': [('t',1)]
+}
+calculate_shortest_path(n, nodes, adj_list)
