@@ -79,6 +79,14 @@ def get_model(
         activation = tf.math.abs
     if output_activation == 'abs':
         output_activation = tf.math.abs
+    if activation == 'relu':
+        activation = tf.nn.relu
+    if output_activation == 'relu':
+        output_activation = tf.nn.relu
+    if activation == 'linear':
+        activation = tf.keras.activations.linear
+    if output_activation == 'linear':
+        output_activation = tf.keras.activations.linear
 
     model = tf.keras.Sequential()
     # Add the input layer. For MNIST we have 784 inputs.
@@ -156,7 +164,7 @@ if __name__ == '__main__':
     Train a FNN with one hidden layer on the MNIST dataset.
     """
 
-    hidden_neurons = 100
+    hidden_neurons = 1000
 
     # Load test and training data
     (x_train, y_train), (x_test, y_test) = load_mnist_tf()
@@ -164,7 +172,7 @@ if __name__ == '__main__':
     #########################################################
     # TODO Generate the network with the get_model function #
     #########################################################
-    model = None
+    model = get_model(hidden_neurons, 'relu', 'linear')
 
     # Train the model. In TensorFlow/Keras the training is
     # implemented in the fit method.
