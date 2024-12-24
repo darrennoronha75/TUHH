@@ -11,7 +11,12 @@ __package__ = "amllib.activations"
 
 from .activation import Activation
 
-# Import ReLU activation function
+# Import specific Activation functions
 from .relu import ReLU
 from .leaky_relu import LeakyReLU
 from .modified_heaviside import ModifiedHeaviside
+from .logistic import Logistic
+from .scaled_logistic import ScaledLogistic
+from .tanh import Tanh
+from .scaled_tanh import ScaledTanh
+from .sign import Sign
