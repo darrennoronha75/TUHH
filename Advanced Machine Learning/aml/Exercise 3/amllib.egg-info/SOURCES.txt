@@ -1,0 +1,17 @@
+pyproject.toml
+setup.py
+amllib/__init__.py
+amllib.egg-info/PKG-INFO
+amllib.egg-info/SOURCES.txt
+amllib.egg-info/dependency_links.txt
+amllib.egg-info/requires.txt
+amllib.egg-info/top_level.txt
+amllib/activations/__init__.py
+amllib/activations/activation.py
+amllib/activations/relu.py
+amllib/networks/__init__.py
+amllib/networks/feedforward.py
+amllib/utils/__init__.py
+amllib/utils/mnist.py
+tests/test_activations.py
+tests/test_feedforward.py
