@@ -17,6 +17,9 @@ from .leaky_relu import LeakyReLU
 from .modified_heaviside import ModifiedHeaviside
 from .logistic import Logistic
 from .scaled_logistic import ScaledLogistic
+from .sign import Sign
 from .tanh import Tanh
 from .scaled_tanh import ScaledTanh
-from .sign import Sign
+from .elu import ELU
+from .softplus import Softplus
+from .swish import Swish
