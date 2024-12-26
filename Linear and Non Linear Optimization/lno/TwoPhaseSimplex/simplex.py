@@ -3,12 +3,13 @@ from certificate import Certificate
 import numpy as np
 
 class Simplex(Program):
-    def __init__(self, lp, solution=None, basis=None):
+    def __init__(self, lp, solution=None, basis=None, identifier = None):
         super().__init__()
         self.lp = lp  # The LP problem
         self.solution = solution  # Stores the feasible solution if one exists
         self.basis = basis if basis is not None else np.arange(self.lp.A.shape[0])
         self.simplex_format_initializer()  # Ensure LP is maximized if needed
+        self.identifier = identifier
 
     def simplex_format_initializer(self):
         """
@@ -111,7 +112,7 @@ class Simplex(Program):
 
     def update_lp_components(self, basis):
         """
-        Update LP components (A, b, c) based on the new basis.
+        Update LP components (A, b, c) to canonical form based on the new basis.
         """
         c_current, A_current, b_current, constant_term, signs = (
             self.lp.c,
@@ -133,6 +134,7 @@ class Simplex(Program):
 
         # Part 1: Rewriting the Objective Function
         y = np.linalg.solve(A_current_basis.T, c_current_basis)
+
         c_rewritten = c_current.T - np.dot(y.T, A_current)
         constant_term += np.dot(y.T, b_current).item()
 

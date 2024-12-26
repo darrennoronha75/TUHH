@@ -1,6 +1,6 @@
 import numpy as np
 from program import Program
-from simplex import Simplex  # Import the Simplex class
+from simplex_solver import Simplex_Solver  # Import the Simplex_Solver class
 
 def test_program_1():
     # Original test case data
@@ -30,6 +30,9 @@ def test_program_1():
     program.print_matrices()
     program.print_equations()
     print("\n")
+
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
     
 def test_program_2():
     # New test case data
@@ -60,14 +63,8 @@ def test_program_2():
     program.print_equations()
     print("\n")
 
-    # Create an instance of the Simplex class and solve the LP
-    basis = np.array([0, 3])  # Initial basis
-    solution = np.array([2,0,0,5])  # Initial solution
-    solver = Simplex(program, basis=basis, solution=solution)
-    solution, objective_value = solver.solve()
-    print("Optimal solution:", solution)
-    print("Objective value:", objective_value)
-    print("\n")
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
 
 def test_program_3():
     # New test case data
@@ -98,6 +95,9 @@ def test_program_3():
     program.print_equations()
     print("\n")
 
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
+
 def test_program_4():
     # New test case data
     A = np.array([[1, 3, 1, 0], [-2, 6, 0, 1]])
@@ -127,17 +127,84 @@ def test_program_4():
     program.print_equations()
     print("\n")
 
-    # Create an instance of the SimplexSolver class and solve the LP
-    basis = np.array([2, 3])  # Initial basis
-    solution = np.array([0, 0, 4, 5])  # Initial solution
-    solver = Simplex( program, solution=solution, basis = basis)
-    solution, objective_value = solver.solve()
-    print("Optimal solution:", solution)
-    print("Objective value:", objective_value)
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
+
+
+def test_program_5():
+    # New test case data
+    A = np.array([
+        [1, -2, 1],
+        [-1,3, -2]
+    ])
+    b = np.array([[2], [-3]])
+    c = np.array([[1], [3], [2]])
+    signs = ['=', '=']
+    objective_type = 'min'
+    constant_term = 0
+
+    # Create an instance of the Program class
+    program = Program()
+
+    # Manually set the attributes to avoid user input
+    program.A = A
+    program.b = b
+    program.c = c
+    program.signs = signs
+    program.objective_type = objective_type
+    program.constant_term = constant_term
+
+    # Calculate basis size
+    program.calculate_basis_size()
+
+    # Print matrices and equations
+    print("Auxiliary LP:")
+    program.print_matrices()
+    program.print_equations()
     print("\n")
+
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
     
+def test_program_6():
+    # New test case data
+    A = np.array([
+        [2, -1, 4, -2, 1],
+        [-1, 0, -3, 1, -1]
+    ])
+    b = np.array([[2], [1]])
+    c = np.array([[-3], [-1], [1], [4], [7]])
+    signs = ['=', '=']
+    objective_type = 'max'
+    constant_term = 0
+
+    # Create an instance of the Program class
+    program = Program()
+
+    # Manually set the attributes to avoid user input
+    program.A = A
+    program.b = b
+    program.c = c
+    program.signs = signs
+    program.objective_type = objective_type
+    program.constant_term = constant_term
+
+    # Calculate basis size
+    program.calculate_basis_size()
+
+    # Print matrices and equations
+    print("Auxiliary LP:")
+    program.print_matrices()
+    program.print_equations()
+    print("\n")
+
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
+
 if __name__ == '__main__':
     # test_program_1()
-    test_program_2()
+    # test_program_2()
     # test_program_3()
-    test_program_4()
+    # test_program_4()
+    # test_program_5()
+    test_program_6()
