@@ -108,6 +108,9 @@ class Program:
             equation = " + ".join(f"{self.A[i][j]:.2f}x{j+1}" for j in range(self.A.shape[1]))
             print(f"{equation} {self.signs[i]} {self.b[i, 0]:.2f}")
 
+        # Display Basis Size
+        print("\nBasis Size:", self.basis_size)
+
         # Display non-negativity constraint message
         print("\nNote: All variables are constrained to be non-negative.")
         print("\n--------------------------------")
