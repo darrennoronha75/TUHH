@@ -1,0 +1,194 @@
+# Helper Functions
+
+def get_unique_edges_with_lengths(adj_list):
+    """
+    Retrieve unique edges with their lengths from the adjacency list.
+    """
+    unique_edges_with_lengths = []  # To store edges with their lengths
+    for node, neighbors in adj_list.items():
+        for neighbor, length in neighbors:
+            edge = (node, neighbor)
+            if edge not in unique_edges_with_lengths:
+                unique_edges_with_lengths.append((edge, length))
+    return unique_edges_with_lengths
+
+def calculate_st_cut(vertices_in_st_cut, unique_edges_with_lengths):
+    """
+    Calculate the st-cut for a given set of vertices.
+    """
+    edges_in_st_cut = []
+    for i in range(len(vertices_in_st_cut)):
+        current_vertex = vertices_in_st_cut[i]
+        for edge, length in unique_edges_with_lengths:
+            u, v = edge
+            if (current_vertex in edge and
+                vertices_in_st_cut.count(u) == 1 and
+                vertices_in_st_cut.count(v) == 0):
+                edges_in_st_cut.append((edge, length))
+    return edges_in_st_cut
+
+def calculate_slack(edges_in_st_cut, feasible_width_active_cuts):
+    """
+    Calculate the slack for each edge in the st-cut.
+    """
+    min_slack_edge = edges_in_st_cut[0]
+    min_slack_value = float('inf')
+    for edge in edges_in_st_cut:
+        active_sum = 0
+        active_edge_flag = check_edge_in_active_cut(edge, feasible_width_active_cuts)
+        if active_edge_flag:
+            for vertex in edge[0]:
+                active_sum = calculate_sum_over_active_cuts(edge, feasible_width_active_cuts)
+        slack_value = edge[1] - active_sum
+        if slack_value < min_slack_value:
+            min_slack_edge = edge
+            min_slack_value = slack_value
+    return min_slack_edge, min_slack_value
+
+def check_edge_in_active_cut(edge, feasible_width_active_cuts):
+    """
+    Check if an edge is part of any active cut.
+    """
+    for active_cut, active_cut_width in feasible_width_active_cuts:
+        if edge in active_cut:
+            return True
+    return False
+
+def calculate_sum_over_active_cuts(edge, feasible_width_active_cuts):
+    """
+    Calculate the sum of active cut widths for a given edge.
+    """
+    total_width = 0
+    for active_cut, active_cut_width in feasible_width_active_cuts:
+        if edge in active_cut:
+            total_width += active_cut_width
+    return total_width
+
+def calculate_feasible_width(edges_in_st_cut, feasible_width_active_cuts):
+    """
+    Update feasible width of active cuts with the edge with the smallest slack.
+    """
+    min_slack_edge, min_slack_value = calculate_slack(edges_in_st_cut, feasible_width_active_cuts)
+    feasible_width_active_cuts.append((edges_in_st_cut, min_slack_value))
+    return feasible_width_active_cuts
+
+def update_current_set_u(set_u, chosen_edge):
+    """
+    Update the set U by adding a chosen vertex from the smallest slack edge.
+    """
+    chosen_vertex = ''
+    for vertex in chosen_edge[0]:
+        if vertex not in set_u:
+            chosen_vertex = vertex
+    set_u.append(chosen_vertex)
+    return set_u
+
+def update_arc_set(arc_set, chosen_edge):
+    """
+    Update the arc set by adding the chosen edge.
+    """
+    arc_set.append(chosen_edge)
+    return arc_set
+
+def infer_path_from_arc_set(edges, start, end):
+    """
+    Infer the path from the arc set.
+    """
+    from collections import defaultdict
+    print("Starting path inference from arc set...")  # Debugging line
+    graph = defaultdict(list)
+    for u, v in edges:
+        graph[u].append(v)
+        graph[v].append(u)  # Because the edges are undirected in nature
+    print(f"Graph constructed: {dict(graph)}")  # Debugging line to check the graph structure
+
+    def dfs(current, path, visited):
+        print(f"Visiting node: {current}, Current path: {path}, Visited nodes: {visited}")  # Debugging line
+        if current == end:
+            print(f"End node reached: {end}, Current path: {path + [current]}")  # Debugging line
+            return path + [current]
+        visited.add(current)
+        for neighbor in graph[current]:
+            if neighbor not in visited:
+                result = dfs(neighbor, path + [current], visited)
+                if result:
+                    return result
+        visited.remove(current)
+        return None
+
+    visited = set()
+    path = dfs(start, [], visited)
+    if path is None:
+        print(f"No path exists from {start} to {end}.")  # Debugging line
+        raise ValueError(f"No path exists from {start} to {end}.")
+    print(f"Found Path: {path}")  # Final debugging line to show the computed path
+    return path
+
+def calculate_shortest_path(n, nodes, adj_list):
+    """
+    Function to calculate the shortest s-t path using the push-relabel method.
+    """
+    # Step 1: Retrieve unique edges and their lengths
+    unique_edges_with_lengths = get_unique_edges_with_lengths(adj_list)
+    vertices = nodes
+
+    # Initialize variables
+    feasible_width_active_cuts = []  # Track active s-t cut widths
+    current_set_u = ['s']  # Initial set U with 's' as the starting node
+    arc_set = []  # List of selected arcs in the current flow configuration
+
+    print("Starting Shortest Path Calculation...\n")
+
+    # Step 2: Iterate to find the shortest path
+    iteration = 1
+    while 't' not in current_set_u:
+        print(f"--- Iteration {iteration} ---")
+        st_cut_edges = calculate_st_cut(current_set_u, unique_edges_with_lengths)
+        edge_with_smallest_slack, slack = calculate_slack(st_cut_edges, feasible_width_active_cuts)
+        print(f"Edge with Smallest Slack: {edge_with_smallest_slack[0]} (Slack: {slack})")
+        feasible_width_active_cuts = calculate_feasible_width(st_cut_edges, feasible_width_active_cuts)
+        print(f"Updated Feasible Width Active Cuts: {feasible_width_active_cuts}")
+        print(f"Current Set U before update: {current_set_u}")
+        current_set_u = update_current_set_u(current_set_u, edge_with_smallest_slack)
+        print(f"Updated Set U: {current_set_u}")
+        print(f"Arc {edge_with_smallest_slack[0]} added to Arc Set.")
+        arc_set = update_arc_set(arc_set, edge_with_smallest_slack[0])
+        iteration += 1
+        print("-" * 30)
+
+    # Step 3: Construct and output the shortest path from the arc set
+    print("\n--- Exiting While Loop ---")
+    print(arc_set)
+    path = infer_path_from_arc_set(arc_set, 's', 't')
+    formatted_path = " -> ".join(path)
+    dual_sum = sum(feasible_width_active_cuts[i][1] for i in range(len(feasible_width_active_cuts)))
+    print(f"\n Directed Path from Arc Set: {formatted_path}")
+    print(f"\n Dual Sum and Length of s-t Path: {dual_sum}")
+    print("\n\nThe Computed Path is a shortest s-t path.\n")
+
+# Adjacency List Definition for Graph - Assignment 09 - Problem 1a
+nodes = ['s','a','b','c','d','t']
+n = len(nodes)
+adj_list = {
+    's': [('a', 3), ('b',4)],
+    'a': [('c',6),('b',2)],
+    'b': [('d',2)],
+    'd': [('c',1),('t',7)],
+    'c': [('t',3)]
+}
+calculate_shortest_path(n, nodes, adj_list)
+
+# Adjacency List Definition for Graph - Assignment 09 - Problem 1b
+nodes = ['s','a','b','c','d','e','f','g','t']
+n = len(nodes)
+adj_list = {
+    's': [('a', 4), ('b',6),('c',1),('d',3)],
+    'a': [('d',2),('b',3),('g',4)],
+    'b': [('c',5),('t',3)],
+    'd': [('c',4),('e',2)],
+    'c': [('f',7)],
+    'e': [('f',3),('g',2)],
+    'f': [('t',1)],
+    'g': [('t',1)]
+}
+calculate_shortest_path(n, nodes, adj_list)
