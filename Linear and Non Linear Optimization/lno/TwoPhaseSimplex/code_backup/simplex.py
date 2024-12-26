@@ -1,4 +1,5 @@
 from program import Program
+from certificate import Certificate
 import numpy as np
 
 class Simplex(Program):
@@ -30,9 +31,10 @@ class Simplex(Program):
             c_current = c.T # Select the reduced coefficient vector
             self.lp.objective_value = np.dot(c_current, self.solution)
 
-            certificate = Certificate(self.lp, self.solution)
+            # Create a certificate object to check optimality
+            optimality_certificate = Certificate(self.lp, self.solution)
 
-            if certificate.check_optimality():
+            if optimality_certificate.check_optimality():
                 print("Optimal solution confirmed.")
                 break  # Optimal solution found
             else:
@@ -40,11 +42,14 @@ class Simplex(Program):
                 basis = self.find_new_basis(A, b, c, basis)
 
         return self.solution, self.lp.objective_value
-
+    
     def find_new_basis(self, A, b, c, basis):
         """
         Computes the new basis for the Linear Program using Bland's Rule.
         """
+        # Initialize the leaving variable index as None
+        leaving_variable_index = None
+
         # Step 1: Find the entering variable index
         c_positive = np.where((c > 0) & ~np.isin(range(len(c)), basis))[0]
         if c_positive.size == 0:
@@ -52,61 +57,36 @@ class Simplex(Program):
         entering_variable_index = c_positive[0]
         print("Entering Variable Index:", entering_variable_index)
 
-        # Step 2: Check for unboundedness
-        if np.all(A[:, entering_variable_index] <= 0):
+        # Step 2: Find the leaving variable index
+
+        # Retrieve the column of the constraint matrix corresponding to the entering variable
+        A_entering = self.A[:, entering_variable_index]
+
+        # Initialize the ratios array with infinity
+        # This ensures that only valid ratios will be considered
+        ratios = np.full_like(self.b, np.inf, dtype=float)
+
+        # Calculate the ratios for each variable in the basis
+        for i in range(len(self.basis)):
+            if A_entering[i] > 0:  # Only consider positive entries in A_entering
+                ratios[i] = self.b[i] / A_entering[i]
+
+        # Find the index of the minimum ratio
+        # This corresponds to the leaving variable
+        leaving_variable_index = np.argmin(ratios)
+        
+        # If the minimum ratio is infinity, the LP is unbounded
+        # Create a certificate object to check unboundedness
+        if np.isinf(ratios[leaving_variable_index]):
+            unbounded_certificate = Certificate(self.lp, self.solution, x_bar=A_entering, r=ratios)
+            unbounded_certificate.certify_unboundedness()
             raise ValueError("LP is unbounded: the objective value can grow indefinitely.")
-
-        # Step 3: Find the leaving variable index
-        # Initialize Leaving Index to -1
-        leaving_variable_index = -1
-        # For the basic variables find the ratio of b for that particular constraint equation to the entering variable constraint coefficient for that equation
-        # Entering Variable Constraint Coefficients
-        A_entering_variable = A[:, entering_variable_index]
-        # Ratio of b to the entering variable constraint coefficients
-        b_division = b / A_entering_variable
-
-        # Ensure we only consider positive ratios
-        positive_ratios = np.where(A_entering_variable > 0, b_division, np.inf)
-        positive_indices = np.where(positive_ratios < np.inf)[0]
-
-        if positive_indices.size == 0:
-            raise ValueError("LP is degenerate or has issues as no positive ratio found.")
-
-        leaving_variable_index = positive_indices[np.argmin(positive_ratios[positive_indices])]
-        t_value = b_division[leaving_variable_index]
-
-        #Using t_value, recalculate Solution Vector
-        self.solution = self.update_solution(A, b, basis)
-
-        print("Leaving Variable Index:", leaving_variable_index)
-
-        # Step 4: Update the basis
-        loc = np.where(basis == leaving_variable_index)
-        if loc[0].size > 0:
-            basis[loc[0][0]] = entering_variable_index
-        else:
-            raise ValueError("Invalid leaving variable index; cannot update basis.")
-
-        print("Updated Basis:", basis)
-
-        # Step 5: Update Solution Vector for new basis computed, choose the smallest ratio to calculate the updated solution which should be basic and have shape according to the number of variables for the LP
-
-
-
+        
+        # Update the basis
+        basis[leaving_variable_index] = entering_variable_index
+        
         return basis
 
-    def update_solution(self, A, b, basis):
-      # Extract the basis matrix
-      B = A[:, basis]
-
-      # Compute the values of the basic variables
-      basic_solution = np.linalg.solve(B, b).flatten()  # Flatten to ensure 1D
-
-      # Create the full solution vector, setting non-basic variables to zero
-      solution = np.zeros(A.shape[1])
-      solution[basis] = basic_solution
-
-      return solution
 
     def update_lp_components(self, basis):
         """

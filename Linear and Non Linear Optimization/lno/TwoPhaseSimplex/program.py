@@ -12,6 +12,7 @@ class Program:
         self.objective_expression = None  # Formatted objective function expression
         self.basis_size = None
         self.free_variables = []  # List of free variables
+        self.objective_value = None  # Objective value at the optimal solution
 
     # --------- Utility Methods ---------
 

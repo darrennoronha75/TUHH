@@ -34,8 +34,8 @@ class Certificate:
         # Check optimality conditions
         if np.all(self.lp.c <= 0) and np.dot(self.lp.c.T, self.solution) <= self.lp.constant_term:
             optimality_flag = True
-            print("Optimal solution found at:", ', '.join(map(str, self.solution)))
-
+            constant_term = self.lp.constant_term
+            print("Optimal Solution Value is " , constant_term)
         return optimality_flag
 
     # We verify infeasibility using Farkas' Lemma. We check if the provided 'y' satisfies the conditions of Farkas' Lemma.
