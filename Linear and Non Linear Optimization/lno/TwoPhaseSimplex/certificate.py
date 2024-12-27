@@ -23,19 +23,23 @@ class Certificate:
         - bool: True if optimal, otherwise False.
         """
         print("\nChecking Optimality of the current solution...")
-        feasible_solution = self.solution
+        feasible_solution = self.solution.flatten()  # Ensure feasible_solution is a 1D array
 
-        # Print current solution and objective value
-        print("Current Solution:", ', '.join(map(str, feasible_solution)))
+        # Print current variables in the solution in the format (x1 = val1, x2 = val2, ..., xn = valn)
+        solution_str = ", ".join(f"x{i+1} = {feasible_solution[i]:.2f}" for i in range(len(feasible_solution)))
+        print(f"Current variables in the solution are: ({solution_str})")
+        print("In Vector Form:", feasible_solution)
+        
         current_objective_value = np.dot(self.lp.c.T, feasible_solution) + self.lp.constant_term
-        print("Current Objective Value is:", current_objective_value)
+        print("Current Objective Value: ", current_objective_value)
+        
         optimality_flag = False
 
-        # Check optimality conditions
-        if np.all(self.lp.c <= 0) and np.dot(self.lp.c.T, self.solution) <= self.lp.constant_term:
+        if np.all(self.lp.c <= 0):
             optimality_flag = True
             constant_term = self.lp.constant_term
-            print("Optimal Solution Value is " , constant_term)
+            # print("Optimal Solution Value is ", constant_term)
+        
         return optimality_flag
 
     # We verify infeasibility using Farkas' Lemma. We check if the provided 'y' satisfies the conditions of Farkas' Lemma.

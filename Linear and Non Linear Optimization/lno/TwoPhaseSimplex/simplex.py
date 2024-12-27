@@ -3,7 +3,7 @@ from certificate import Certificate
 import numpy as np
 
 class Simplex(Program):
-    def __init__(self, lp, solution=None, basis=None, identifier = None):
+    def __init__(self, lp, solution=None, basis=None, identifier=None):
         super().__init__()
         self.lp = lp  # The LP problem
         self.solution = solution  # Stores the feasible solution if one exists
@@ -25,25 +25,28 @@ class Simplex(Program):
         basis = self.basis
 
         while True:
+            # Print current variables in the basis in the format (x1, x2, ..., xn)
+            print("\nCurrent variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
             # Update LP components based on the current basis
             A, b, c = self.update_lp_components(basis)
 
             # Update objective value correctly using the current solution
-            c_current = c.T # Select the reduced coefficient vector
+            c_current = c.T  # Select the reduced coefficient vector
             self.lp.objective_value = np.dot(c_current, self.solution)
 
             # Create a certificate object to check optimality
             optimality_certificate = Certificate(self.lp, self.solution)
 
             if optimality_certificate.check_optimality():
-                print("Optimal solution confirmed.")
+                print(" \nOptimal solution confirmed.")
+                print("The Program has returned an optimal solution.")
                 break  # Optimal solution found
             else:
-                print("Current solution not optimal, updating basis using Bland's rule.")
-                basis, self.solution  = self.find_new_basis(A, b, c, basis)
+                print("Attempting to update basis using Bland's rule.")
+                basis, self.solution = self.find_new_basis(A, b, c, basis)
 
         return self.solution, self.lp.objective_value
-    
+
     def find_new_basis(self, A, b, c, basis):
         """
         Computes the new basis for the Linear Program using Bland's Rule.
@@ -75,40 +78,29 @@ class Simplex(Program):
         # Find the index of the minimum ratio
         # This corresponds to the leaving variable
         leaving_variable_index = np.argmin(ratios)
-        
+
         # If the minimum ratio is infinity, the LP is unbounded
         # Create a certificate object to check unboundedness
         if np.isinf(ratios[leaving_variable_index]):
             unbounded_certificate = Certificate(self.lp, self.solution, x_bar=A_entering, r=ratios)
             unbounded_certificate.certify_unboundedness()
             raise ValueError("LP is unbounded: the objective value can grow indefinitely.")
-        
+
         # We need to update the solution as well, with the minimum ratio and re-calculate the value of each variable in the feasible solution.
         # The new feasible solution will have the new entering variable and the leaving variable as non-zero values.
         # The other variables will be zero.
         new_solution = np.zeros(len(c))
-        #Updating the Basis solution values as per minimum ratio calculated. There can be multiple variables in the basis.
+        # Updating the Basis solution values as per minimum ratio calculated. There can be multiple variables in the basis.
         new_solution[entering_variable_index] = ratios[leaving_variable_index]
         # All other basis variables would be calculated as per b - ratios[leaving_variable_index] * A_entering
         for i in range(len(self.basis)):
             if i != leaving_variable_index:
                 new_solution[self.basis[i]] = self.solution[self.basis[i]] - ratios[leaving_variable_index] * A[i, entering_variable_index]
 
-
-        # for i in range(len(self.basis)):
-        #     if i == entering_variable_index:
-        #         new_solution[i] = ratios[leaving_variable_index]
-        #     else:
-        #         new_solution[i] = self.solution[i] - ratios[leaving_variable_index] * A_entering[i]   
-             
-        
-
-
         # Update the basis
         basis[leaving_variable_index] = entering_variable_index
-        
-        return basis, new_solution
 
+        return basis, new_solution
 
     def update_lp_components(self, basis):
         """
@@ -128,19 +120,31 @@ class Simplex(Program):
         for i in range(len(basis_current)):
             A_current_basis[:, i] = A_current[:, basis_current[i]]
 
+        # # Print shapes for debugging
+        # print("Shape of A_current_basis:", A_current_basis.shape)
+        # print("A_current_basis:\n", A_current_basis)
+
+
+        # Ensure A_current_basis is square
+        if A_current_basis.shape[0] != A_current_basis.shape[1]:
+            raise ValueError("A_current_basis must be square. Check the basis initialization.")
+
         c_current_basis = np.zeros(len(basis_current))
         for i in range(len(basis_current)):
             c_current_basis[i] = c_current[int(basis_current[i])]
 
         # Part 1: Rewriting the Objective Function
-        y = np.linalg.solve(A_current_basis.T, c_current_basis)
+        
+        # print("c_current_basis:\n", c_current_basis)
+        A_current_basis_inv = np.linalg.inv(A_current_basis)  # Calculate the inverse of the basis matrix
+        y = np.dot(A_current_basis_inv.T, c_current_basis)
 
         c_rewritten = c_current.T - np.dot(y.T, A_current)
         constant_term += np.dot(y.T, b_current).item()
 
         # Part 2: Rewriting the Constraints
-        A_rewritten = np.linalg.solve(A_current_basis, A_current)
-        b_rewritten = np.linalg.solve(A_current_basis, b_current)
+        A_rewritten = np.dot(A_current_basis_inv, A_current)
+        b_rewritten = np.dot(A_current_basis_inv, b_current)
 
         # Update LP directly
         self.lp.c = c_rewritten.T  # Transpose back to column vector
@@ -150,7 +154,7 @@ class Simplex(Program):
         self.lp.signs = signs
 
         # Print updated LP using the `print_equations` method
-        print("\nCanonical Form at this step is given below:")
+        print("We can rewrite the LP to be in Canonical form for the above basis as below: ")
         self.lp.print_equations()  # Display updated LP
 
         return self.lp.A, self.lp.b, self.lp.c

@@ -106,6 +106,7 @@ class Program:
         # Display constraints
         print("\nConstraints:")
         for i in range(self.A.shape[0]):
+            # Based on sign of constraint coefficient for a particular variable, use + or -
             equation = " + ".join(f"{self.A[i][j]:.2f}x{j+1}" for j in range(self.A.shape[1]))
             print(f"{equation} {self.signs[i]} {self.b[i, 0]:.2f}")
 

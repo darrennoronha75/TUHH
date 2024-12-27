@@ -206,5 +206,5 @@ if __name__ == '__main__':
     # test_program_2()
     # test_program_3()
     # test_program_4()
-    # test_program_5()
-    test_program_6()
+    test_program_5()
+    # test_program_6()
