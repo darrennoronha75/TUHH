@@ -117,16 +117,11 @@ def test_program_4():
     program.signs = signs
     program.objective_type = objective_type
     program.constant_term = constant_term
+    program.verbose = True
 
     # Calculate basis size
     program.calculate_basis_size()
-
-    # Print matrices and equations
-    print("Test Case 4:")
-    program.print_matrices()
-    program.print_equations()
-    print("\n")
-
+ 
     # Create an instance of the Simplex_Solver class
     solver = Simplex_Solver(program)
 
@@ -188,6 +183,7 @@ def test_program_6():
     program.signs = signs
     program.objective_type = objective_type
     program.constant_term = constant_term
+    program.verbose = False
 
     # Calculate basis size
     program.calculate_basis_size()
@@ -205,6 +201,10 @@ if __name__ == '__main__':
     # test_program_1()
     # test_program_2()
     # test_program_3()
-    # test_program_4()
-    test_program_5()
+    
+
+    #Optimal Solution Test Cases
+    test_program_4()
+    # test_program_5()
+
     # test_program_6()

@@ -22,16 +22,20 @@ class Certificate:
         Returns:
         - bool: True if optimal, otherwise False.
         """
-        print("\nChecking Optimality of the current solution...")
+        
         feasible_solution = self.solution.flatten()  # Ensure feasible_solution is a 1D array
 
         # Print current variables in the solution in the format (x1 = val1, x2 = val2, ..., xn = valn)
         solution_str = ", ".join(f"x{i+1} = {feasible_solution[i]:.2f}" for i in range(len(feasible_solution)))
-        print(f"Current variables in the solution are: ({solution_str})")
-        print("In Vector Form:", feasible_solution)
+        print(f"\nCurrent Solution : ({solution_str})")
+        # Print the solution in vector form with aligned values
+        vector_form = "[" + " ".join(f"{val:8.2f}" for val in feasible_solution) + " ]"
+        print("In Vector Form:", vector_form)
         
         current_objective_value = np.dot(self.lp.c.T, feasible_solution) + self.lp.constant_term
         print("Current Objective Value: ", current_objective_value)
+
+        print("\nChecking Optimality of the current solution...")
         
         optimality_flag = False
 

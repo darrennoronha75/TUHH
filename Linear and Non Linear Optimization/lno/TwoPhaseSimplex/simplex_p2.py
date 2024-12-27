@@ -31,12 +31,15 @@ class Simplex_P2(Program):
             print("\n\nAs the Auxiliary LP returns a non-zero objective value, the original LP is infeasible.")
             return None, None
         else:
-            print("The Auxiliary LP returns a zero objective value, the original LP is feasible.")
+            print("\n\nThe Auxiliary LP returns a zero objective value, the original LP is feasible.")
             print("We will now proceed to Phase 2 of the Two-Phase Simplex Method. \n")
-            print("------------------------------------------- \n")
-            print("Phase 2 of the Two-Phase Simplex Method: \n")
-            print("------------------------------------------- \n")
-        
+  
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(">>                                       <<")
+            print(">>             Phase 2 - Simplex         <<")
+            print(">>                                       <<")
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+
         # We will calculate the basis indexes for the original LP using the solution from Phase 1.
         # The basis indexes are the indexes of the non-auxiliary variables in the original LP, that have a non-zero value in the solution from Phase 1.
         basis = np.where(phase_1_solution[:lp.A.shape[1]] != 0)[0]

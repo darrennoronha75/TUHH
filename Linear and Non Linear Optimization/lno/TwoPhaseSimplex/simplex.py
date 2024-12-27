@@ -23,10 +23,17 @@ class Simplex(Program):
     def solve(self):
         A, b, c = self.lp.A, self.lp.b, self.lp.c
         basis = self.basis
+        iteration_count = 0  # Initialize iteration counter
 
         while True:
+            iteration_count += 1  # Increment iteration counter
+            print("\n-------------------------------------------")
+            print(f"Iteration {iteration_count}:")
+            print("-------------------------------------------")
+
             # Print current variables in the basis in the format (x1, x2, ..., xn)
-            print("\nCurrent variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
+            print("Current variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
+            
             # Update LP components based on the current basis
             A, b, c = self.update_lp_components(basis)
 
@@ -38,13 +45,20 @@ class Simplex(Program):
             optimality_certificate = Certificate(self.lp, self.solution)
 
             if optimality_certificate.check_optimality():
-                print(" \nOptimal solution confirmed.")
-                print("The Program has returned an optimal solution.")
+                print("\nOptimal solution confirmed.")
+                print(f"The Simplex Algorithm has returned an optimal solution for the {self.identifier} after {iteration_count} iterations.")
+                if self.identifier == "Auxiliary LP":
+                    print(f"An Optimal Value for the Auxiliary LP is found at {self.lp.objective_value}.")
+                else:
+                    print("Algorithm terminated.")
                 break  # Optimal solution found
             else:
+                print("\nCurrent solution is not optimal.")
                 print("Attempting to update basis using Bland's rule.")
                 basis, self.solution = self.find_new_basis(A, b, c, basis)
+                print("\nNew variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
 
+        # print(f"Total Iterations: {iteration_count}")
         return self.solution, self.lp.objective_value
 
     def find_new_basis(self, A, b, c, basis):
@@ -59,7 +73,6 @@ class Simplex(Program):
         if c_positive.size == 0:
             raise ValueError("No entering variable found. LP might already be optimal.")
         entering_variable_index = c_positive[0]
-        print("Entering Variable is x" + str(entering_variable_index + 1))
 
         # Step 2: Find the leaving variable index
 
@@ -99,7 +112,7 @@ class Simplex(Program):
 
         # Update the basis
         basis[leaving_variable_index] = entering_variable_index
-
+        
         return basis, new_solution
 
     def update_lp_components(self, basis):
@@ -120,11 +133,6 @@ class Simplex(Program):
         for i in range(len(basis_current)):
             A_current_basis[:, i] = A_current[:, basis_current[i]]
 
-        # # Print shapes for debugging
-        # print("Shape of A_current_basis:", A_current_basis.shape)
-        # print("A_current_basis:\n", A_current_basis)
-
-
         # Ensure A_current_basis is square
         if A_current_basis.shape[0] != A_current_basis.shape[1]:
             raise ValueError("A_current_basis must be square. Check the basis initialization.")
@@ -134,8 +142,6 @@ class Simplex(Program):
             c_current_basis[i] = c_current[int(basis_current[i])]
 
         # Part 1: Rewriting the Objective Function
-        
-        # print("c_current_basis:\n", c_current_basis)
         A_current_basis_inv = np.linalg.inv(A_current_basis)  # Calculate the inverse of the basis matrix
         y = np.dot(A_current_basis_inv.T, c_current_basis)
 
@@ -154,7 +160,7 @@ class Simplex(Program):
         self.lp.signs = signs
 
         # Print updated LP using the `print_equations` method
-        print("We can rewrite the LP to be in Canonical form for the above basis as below: ")
+        print("We can rewrite the LP to be in Canonical form for the above basis as below: \n")
         self.lp.print_equations()  # Display updated LP
 
         return self.lp.A, self.lp.b, self.lp.c

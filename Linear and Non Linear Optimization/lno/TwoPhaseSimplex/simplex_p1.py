@@ -15,10 +15,10 @@ class Simplex_P1(Program):
         # Auxiliary variables are added to the original LP constraints to convert them into equations.
         self.auxiliary_lp, self.initial_basis_indices = self.construct_auxiliary_lp(lp)
         
-        #Print the Auxiliary LP matrices c equations
-        print("Auxiliary LP:")
+        # #Print the Auxiliary LP matrices c equations
+        # print("Auxiliary LP:")
         # self.auxiliary_lp.print_matrices()
-        self.auxiliary_lp.print_equations()
+        # self.auxiliary_lp.print_equations()
 
         #Run Phase 1 of the Simplex method
         self.solution, self.objective_value = self.phase_1(self.auxiliary_lp)       
@@ -31,18 +31,34 @@ class Simplex_P1(Program):
         Returns:
         - None
         """
+
+        print("We will now proceed to Phase 1 of the Two-Phase Simplex Method.")
+        print("Our first step is to construct and solve the Auxiliary LP construction for the given LP. \n")
+        
+   
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        print(">>                                       <<")
+        print(">>             Phase 1 - Simplex         <<")
+        print(">>                                       <<")
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+            
         # Initialize the Simplex solver for the Auxiliary LP
 
         # Use the initial basis indices for the Auxiliary LP
         basis = self.initial_basis_indices
-        print("Inital Basis : ", basis)
-    
+        print("Inital Basis : ", basis)  
 
         # The initial solution for the Auxiliary LP is to set all non-auxiliary variables to zero and set the auxiliary variables to the right-hand side values from the constraints (b).
         # So, since the auxiliary variables are at the end of the solution vector, we set the original variables to zero and the auxiliary variables to the right-hand side values with the appropriate dimensions
         solution = np.zeros((auxiliary_lp.A.shape[1], 1))
         solution[-auxiliary_lp.basis_size:] = auxiliary_lp.b
-        print("Initial Solution : ", solution)
+        # Format the solution for neater printing
+        formatted_solution = ", ".join(
+            f"x{i+1} = {solution[i, 0]:.2f}" for i in range(solution.shape[0])
+        )
+        print("Initial Solution: ", formatted_solution)
+
+
 
         auxiliary_solver = Simplex(auxiliary_lp, basis=basis, solution=solution, identifier="Auxiliary LP")
         solution, objective_value = auxiliary_solver.solve()
@@ -65,6 +81,7 @@ class Simplex_P1(Program):
             if original_b[i] < 0:
                 original_A[i] = -original_A[i]
                 original_b[i] = -original_b[i]
+
 
         # Define the Auxiliary LP:
         # - Augment the constraint matrix A with an identity matrix to include auxiliary variables.
