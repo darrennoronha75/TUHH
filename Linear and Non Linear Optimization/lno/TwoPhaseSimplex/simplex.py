@@ -3,7 +3,7 @@ from certificate import Certificate
 import numpy as np
 
 class Simplex(Program):
-    def __init__(self, lp, solution=None, basis=None, identifier=None):
+    def __init__(self, lp, solution=None, basis=None, identifier='Original LP'):
         super().__init__()
         self.lp = lp  # The LP problem
         self.solution = solution  # Stores the feasible solution if one exists
@@ -27,12 +27,13 @@ class Simplex(Program):
 
         while True:
             iteration_count += 1  # Increment iteration counter
-            print("\n-------------------------------------------")
-            print(f"Iteration {iteration_count}:")
-            print("-------------------------------------------")
+            # print("\n-------------------------------------------")
+            print("\n\n****************************")
+            print(f"        ITERATION {iteration_count}")
+            print("****************************\n")
 
             # Print current variables in the basis in the format (x1, x2, ..., xn)
-            print("Current variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
+            print("At start of iteration, variables in basis are : x" + ", x".join(map(str, basis + 1)) + "")
             
             # Update LP components based on the current basis
             A, b, c = self.update_lp_components(basis)
@@ -48,15 +49,17 @@ class Simplex(Program):
                 print("\nOptimal solution confirmed.")
                 print(f"The Simplex Algorithm has returned an optimal solution for the {self.identifier} after {iteration_count} iterations.")
                 if self.identifier == "Auxiliary LP":
-                    print(f"An Optimal Value for the Auxiliary LP is found at {self.lp.objective_value}.")
+                    print(f"The optimal value for the Auxiliary LP is {self.lp.objective_value.item()}.")
+                    print("\n-----------------------------------------------------------------------------------------------")
                 else:
-                    print("Algorithm terminated.")
+                    print("Algorithm stops here.")
+                    print("\n-----------------------------------------------------------------------------------------------")
                 break  # Optimal solution found
             else:
                 print("\nCurrent solution is not optimal.")
                 print("Attempting to update basis using Bland's rule.")
                 basis, self.solution = self.find_new_basis(A, b, c, basis)
-                print("\nNew variables in the basis are: (x" + ", x".join(map(str, basis + 1)) + ")")
+                print("\nAt end of iteration, variables in basis are : x" + ", x".join(map(str, basis + 1)) + "")
 
         # print(f"Total Iterations: {iteration_count}")
         return self.solution, self.lp.objective_value
@@ -109,6 +112,9 @@ class Simplex(Program):
         for i in range(len(self.basis)):
             if i != leaving_variable_index:
                 new_solution[self.basis[i]] = self.solution[self.basis[i]] - ratios[leaving_variable_index] * A[i, entering_variable_index]
+        
+
+        print(f"Entering Variable is set to x{entering_variable_index + 1} and Leaving Variable is set to x{basis[leaving_variable_index] + 1}.")
 
         # Update the basis
         basis[leaving_variable_index] = entering_variable_index
@@ -160,7 +166,7 @@ class Simplex(Program):
         self.lp.signs = signs
 
         # Print updated LP using the `print_equations` method
-        print("We can rewrite the LP to be in Canonical form for the above basis as below: \n")
+        print(f"Rewriting {self.identifier} to canonical form for new basis, \n")
         self.lp.print_equations()  # Display updated LP
 
         return self.lp.A, self.lp.b, self.lp.c

@@ -32,22 +32,20 @@ class Simplex_P1(Program):
         - None
         """
 
-        print("We will now proceed to Phase 1 of the Two-Phase Simplex Method.")
-        print("Our first step is to construct and solve the Auxiliary LP construction for the given LP. \n")
-        
-   
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        print(">>                                       <<")
-        print(">>             Phase 1 - Simplex         <<")
-        print(">>                                       <<")
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+
+        print("\n-----------------------------------------------------------------------------------------------")   
+        print("*******************************************")
+        print("###########################################\n")
+        print("           Phase 1 - Simplex               ")
+        print("\n###########################################")
+        print("*******************************************")
             
         # Initialize the Simplex solver for the Auxiliary LP
 
         # Use the initial basis indices for the Auxiliary LP
         basis = self.initial_basis_indices
-        print("Inital Basis : ", basis)  
-
+        print(f"\nAs per Auxiliary Construction, starting variables in basis : x{', x'.join(map(str, basis + 1))}")
+        
         # The initial solution for the Auxiliary LP is to set all non-auxiliary variables to zero and set the auxiliary variables to the right-hand side values from the constraints (b).
         # So, since the auxiliary variables are at the end of the solution vector, we set the original variables to zero and the auxiliary variables to the right-hand side values with the appropriate dimensions
         solution = np.zeros((auxiliary_lp.A.shape[1], 1))
@@ -56,7 +54,7 @@ class Simplex_P1(Program):
         formatted_solution = ", ".join(
             f"x{i+1} = {solution[i, 0]:.2f}" for i in range(solution.shape[0])
         )
-        print("Initial Solution: ", formatted_solution)
+        print("Initial Solution:", formatted_solution)
 
 
 

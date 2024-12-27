@@ -27,15 +27,17 @@ class Certificate:
 
         # Print current variables in the solution in the format (x1 = val1, x2 = val2, ..., xn = valn)
         solution_str = ", ".join(f"x{i+1} = {feasible_solution[i]:.2f}" for i in range(len(feasible_solution)))
-        print(f"\nCurrent Solution : ({solution_str})")
-        # Print the solution in vector form with aligned values
-        vector_form = "[" + " ".join(f"{val:8.2f}" for val in feasible_solution) + " ]"
-        print("In Vector Form:", vector_form)
+        print(f"\nCurrent Solution: {solution_str}")
+        # # Print the solution in vector form with aligned values
+        # vector_form = "[" + " ".join(f"{val:8.2f}" for val in feasible_solution) + " ]"
+        # print("In Vector Form:", vector_form)
         
-        current_objective_value = np.dot(self.lp.c.T, feasible_solution) + self.lp.constant_term
-        print("Current Objective Value: ", current_objective_value)
+        dot_product = float(np.dot(self.lp.c.T, feasible_solution))
+        current_objective_value = dot_product + float(self.lp.constant_term)
+        rounded_objective_value = round(current_objective_value, 2)  # Round to 2 decimal places
+        print("Current Objective Value: ", rounded_objective_value)
 
-        print("\nChecking Optimality of the current solution...")
+        print("\nChecking Optimality of the current solution,")
         
         optimality_flag = False
 

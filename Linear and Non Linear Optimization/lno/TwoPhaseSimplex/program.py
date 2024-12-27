@@ -97,46 +97,42 @@ class Program:
         Prints the formatted objective function and constraints, reflecting the updated coefficients and constant term.
         """
         if not self.verbose:
-            # print("===========================================")
-            # print("||           Program Summary - Step      ||")
-            # print("===========================================\n")
-
-            
             # Display the objective function
-            print("\tObjective Function:")
+            print("...........................................................")
+            print("\t>>> Objective Function")
+            print("\t-------------------------------------------")
             terms = []
             for i in range(self.c.shape[0]):
                 coefficient = self.c[i, 0]
-                if coefficient != 0:
-                    sign = "+" if coefficient > 0 and i != 0 else ""
-                    terms.append(f"{sign}{coefficient:.2f}x{i+1}")
+                if i == 0:
+                    terms.append(f"{abs(coefficient):.2f} x{i+1}")
+                else:
+                    sign = " + " if coefficient >= 0 else " - "
+                    terms.append(f"{sign}{abs(coefficient):.2f} x{i+1}")
             if self.constant_term != 0:
-                sign = "+" if self.constant_term > 0 else ""
-                terms.append(f"{sign}{self.constant_term:.2f}")
+                sign = " + " if self.constant_term > 0 else " - "
+                terms.append(f"{sign}{abs(self.constant_term):.2f}")
             prefix = "Minimize:" if self.objective_type == 'min' else "Maximize:"
             print(f"\t{prefix} {' '.join(terms)}")
 
-            
-            
             # Display constraints
-            print("\tConstraints:")
+            print("\n\t>>> Constraints")
+            print("\t-------------------------------------------")
             for i in range(self.A.shape[0]):
                 equation_terms = []
                 for j in range(self.A.shape[1]):
                     coefficient = self.A[i][j]
-                    if coefficient != 0:
-                        sign = "+" if coefficient > 0 and j != 0 else ""
-                        equation_terms.append(f"{sign}{coefficient:.2f}x{j+1}")
+                    if j == 0:
+                        equation_terms.append(f"{abs(coefficient):.2f} x{j+1}")
+                    else:
+                        sign = " + " if coefficient >= 0 else " - "
+                        equation_terms.append(f"{sign}{abs(coefficient):.2f} x{j+1}")
                 equation = " ".join(equation_terms)
                 print(f"\t{equation} {self.signs[i]} {self.b[i, 0]:.2f}")
 
-            
-            
-            # Display Basis Size
-            print("\tBasis Size:", self.basis_size)
+            # # Display Basis Size
+            # print("\n\tBasis Size:", self.basis_size)
 
-            
-            
             # Display non-negativity constraint message
-            print("\tNote: All variables are constrained to be non-negative.")
-            
+            print("\n\tNote: All variables are constrained to be non-negative.")
+            print("...........................................................")
