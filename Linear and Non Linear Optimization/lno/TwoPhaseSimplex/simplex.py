@@ -39,7 +39,7 @@ class Simplex(Program):
 
             # Update objective value correctly using the current solution
             c_current = c.T  # Select the reduced coefficient vector
-            self.lp.objective_value = np.dot(c_current, self.solution)
+            self.lp.objective_value =  np.dot(self.lp.c.T, self.solution) + self.lp.constant_term
 
             # Create a certificate object to check optimality
             optimality_certificate = Certificate(self.lp, self.solution)
