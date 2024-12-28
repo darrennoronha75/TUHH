@@ -29,7 +29,7 @@ class Simplex_P2(Program):
         # We will assume the original LP is infeasible if the objective value from Phase 1 is not zero.
         if phase_1_objective_value != 0:
             print("\n\nAs the Auxiliary LP returns a non-zero objective value, the original LP is infeasible.")
-            print("Algorithm terminates here.")
+            print("Algorithm stops here.")
             return None, None
         else:
             print("\n\nSince the Auxiliary LP returns a zero objective value, the original LP is feasible.")

@@ -56,7 +56,7 @@ class Certificate:
         Returns:
         - bool: True if infeasible, otherwise False.
         """
-        print("\nChecking Infeasibility of the current solution...")
+        print("\nChecking Infeasibility of the current solution,")
         y = self.y
         infeasibility_flag = False
 
@@ -74,12 +74,25 @@ class Certificate:
         - bool: True if infeasible, otherwise False.
         """
         # Cumulatively - x¯ ≥ 0, r ≥ 0, Ax¯ = b, Ar = 0 and cTr > 0 must all hold.
-        print("\nChecking Unboundedness of the current solution...")
+        print("\nChecking Unboundedness of the current solution, \n")
         x_bar = self.x_bar
         r = self.r
+        # print("x_bar: ", x_bar)
+        # print("r: ", r)
         unboundedness_flag = False
 
-        if np.all(x_bar >= 0) and np.all(r >= 0) and np.all(np.dot(self.lp.A, x_bar) == self.lp.b) and np.all(np.dot(self.lp.A.T, r) == 0) and np.dot(self.lp.c.T, r) > 0:
+        # # Checking stuff from the if condition evaluating - debug
+        # print("x_bar >= 0: ", np.all(x_bar >= 0))
+        # print("r >= 0: ", np.all(r >= 0))
+        # print("Ax_bar = b: ", np.all(np.dot(self.lp.A, x_bar) == self.lp.b.flatten()))
+        # print("A = ", self.lp.A)
+        # print(self.lp.A.shape)
+        # print(x_bar.shape)
+        # print("Ar = 0: ", np.all(np.dot(self.lp.A, r) == 0))
+        # print(np.dot(self.lp.A, r))
+        # print("cTr > 0: ", np.dot(self.lp.c.T, r) > 0)
+
+        if np.all(x_bar >= 0) and np.all(r >= 0) and np.all(np.dot(self.lp.A, x_bar) == self.lp.b.flatten()) and np.all(np.dot(self.lp.A, r) == 0) and np.dot(self.lp.c.T, r) > 0:
             unboundedness_flag = True
-            print("LP is unbounded in the direction of x_bar and r.")
+        return unboundedness_flag
         

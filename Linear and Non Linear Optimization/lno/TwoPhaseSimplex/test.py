@@ -186,9 +186,9 @@ def test_program_7():
     A = np.array([
         [-1, -1, 1, 0],
         [-2, 1, 0, 1]
-    ])
-    b = np.array([[2], [1]])
-    c = np.array([[-1], [0], [0], [1]])
+    ], dtype=float)
+    b = np.array([[2], [1]], dtype=float)
+    c = np.array([[-1], [0], [0], [1]], dtype=float)
     signs = ['=', '=']
     objective_type = 'max'
     constant_term = 0
@@ -241,6 +241,37 @@ def test_program_8():
     # Create an instance of the Simplex_Solver class
     solver = Simplex_Solver(program)
 
+def test_program_9():
+    # New test case data
+    A = np.array([
+        [1, -2, 1, 0, 0],
+        [3, -1, 0, 1, 0],
+        [2, 0, 0, 0, 1]
+    ], dtype=float)
+    b = np.array([[1], [4], [4]], dtype=float)
+    c = np.array([[-3], [2], [0], [0], [0]], dtype=float)
+    signs = ['=', '=', '=']
+    objective_type = 'max'
+    constant_term = 3
+
+    # Create an instance of the Program class
+    program = Program()
+
+    # Manually set the attributes to avoid user input
+    program.A = A
+    program.b = b
+    program.c = c
+    program.signs = signs
+    program.objective_type = objective_type
+    program.constant_term = constant_term
+    program.verbose = False
+
+    # Calculate basis size
+    program.calculate_basis_size()
+
+    # Create an instance of the Simplex_Solver class
+    solver = Simplex_Solver(program)
+
 if __name__ == '__main__':
 
     #Infeasible Solution Test Cases
@@ -253,10 +284,11 @@ if __name__ == '__main__':
     # test_program_2()
     # test_program_5()
     # test_program_7()
+    test_program_9()
     
 
     #Optimal Solution Test Cases
-    test_program_4()
+    # test_program_4()
     
 
    

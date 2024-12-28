@@ -59,6 +59,15 @@ class Simplex(Program):
                 print("\nCurrent solution is not optimal.")
                 print("Attempting to update basis using Bland's rule.")
                 basis, self.solution = self.find_new_basis(A, b, c, basis)
+
+                # If the basis is full of -1, the LP is unbounded
+                if np.all(basis == -1):
+                    print("LP Unboundedness confirmed.")
+                    print(f"The Simplex Algorithm has found that the {self.identifier} is unbounded after {iteration_count} iterations.")
+                    print("Algorithm stops here.")
+                    print("\n-----------------------------------------------------------------------------------------------")
+                    break # Unbounded LP case
+
                 print("\nAt end of iteration, variables in basis are : x" + ", x".join(map(str, basis + 1)) + "")
 
         # print(f"Total Iterations: {iteration_count}")
@@ -70,13 +79,17 @@ class Simplex(Program):
         """
         # Initialize the leaving variable index as None
         leaving_variable_index = None
-
+        
+        
         # Step 1: Find the entering variable index
-        c_positive = np.where((c > 0) & ~np.isin(range(len(c)), basis))[0]
+        c_positive = np.where((c > 0) & ~np.isin(range(len(c)+1), basis))[0]
         if c_positive.size == 0:
             raise ValueError("No entering variable found. LP might already be optimal.")
+        print("Basis Array contains : ", basis+1)
+        print("Positive Coefficients in c: ", c_positive+1)
         entering_variable_index = c_positive[0]
 
+        print(f"Entering Variable is set to x{entering_variable_index + 1}.")
         # Step 2: Find the leaving variable index
 
         # Retrieve the column of the constraint matrix corresponding to the entering variable
@@ -85,6 +98,7 @@ class Simplex(Program):
         # Initialize the ratios array with infinity
         # This ensures that only valid ratios will be considered
         ratios = np.full_like(b, np.inf, dtype=float)
+        
 
         # Calculate the ratios for each variable in the basis
         for i in range(len(self.basis)):
@@ -98,9 +112,11 @@ class Simplex(Program):
         # If the minimum ratio is infinity, the LP is unbounded
         # Create a certificate object to check unboundedness
         if np.isinf(ratios[leaving_variable_index]):
-            unbounded_certificate = Certificate(self.lp, self.solution, x_bar=A_entering, r=ratios)
-            unbounded_certificate.certify_unboundedness()
-            raise ValueError("LP is unbounded: the objective value can grow indefinitely.")
+            unbounded_certificate = Certificate(self.lp, self.solution, x_bar = self.construct_xbar(b, basis), r = self.construct_r(entering_variable_index, A_entering, basis, b) )
+            print("A suitable leaving variable cannot be found at the moment.")
+            if(unbounded_certificate.certify_unboundedness()):
+                #Return basis full of -1 to indicate unboundedness
+                return np.full(len(basis), -1), self.solution
 
         # We need to update the solution as well, with the minimum ratio and re-calculate the value of each variable in the feasible solution.
         # The new feasible solution will have the new entering variable and the leaving variable as non-zero values.
@@ -113,11 +129,12 @@ class Simplex(Program):
             if i != leaving_variable_index:
                 new_solution[self.basis[i]] = self.solution[self.basis[i]] - ratios[leaving_variable_index] * A[i, entering_variable_index]
         
-
+        
         print(f"Entering Variable is set to x{entering_variable_index + 1} and Leaving Variable is set to x{basis[leaving_variable_index] + 1}.")
 
         # Update the basis
         basis[leaving_variable_index] = entering_variable_index
+
         
         return basis, new_solution
 
@@ -170,3 +187,38 @@ class Simplex(Program):
         self.lp.print_equations()  # Display updated LP
 
         return self.lp.A, self.lp.b, self.lp.c
+    
+    def construct_xbar(self, b, basis):
+        """
+        Construct the x_bar vector for the Certificate object
+        It must be possible to perform dot product with A matrix.
+        """
+        x_bar = np.zeros(self.lp.A.shape[1])
+        for i in range(len(basis)):
+            x_bar[basis[i]] = b[i]
+        return x_bar
+    
+    def construct_r(self, entering_variable_index, A_entering, basis, b):
+        """
+        Construct the r vector for the Certificate object.
+        """
+        r = np.zeros(self.lp.A.shape[1])
+
+        # print("basis is : ", basis)
+        # print("A_entering is: ", A_entering)
+        # print("entering_variable_index ", entering_variable_index)
+        # print("b ", b)
+
+        # We shall construct r by mapping the basis variables to the ratios calculated.
+        # The entering variable will recieve the minimum value in b, and the other basis variables will be assigned the A_entering value.
+        # All other variables will be zero.
+        r[entering_variable_index] = b.min()
+
+        #As per basis indexes, we will assign the A_entering values to the basis variables.
+        for i in range(len(basis)):
+            # print("Checking for i: ", i)
+            if basis[i] != entering_variable_index:
+                r[basis[i]] = -1*A_entering[i]
+                # print("r basis[i] is: ", basis[i])
+        
+        return r
