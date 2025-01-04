@@ -517,6 +517,14 @@ Please find the functions used below. The final cell in this section apply the m
 ######
 "
 
+# ╔═╡ b9cdffcb-706a-4eec-985e-f81c6faa3ec7
+#Creating Copies of the SLJ Image for straightforward testing
+
+begin
+slj_2b = deepcopy(slj)
+slj_2c = deepcopy(slj)
+end
+
 # ╔═╡ 1dd07dc7-89e3-4cd5-8031-3a367b3c5563
 
 # ########################################################
@@ -546,8 +554,11 @@ function replace_color(img,col_old,col_new,threshold)
 end
 
 # ╔═╡ 629524b2-de7e-49f5-9c38-47be8aea8689
+begin
 # replace with your solution on slj
-slj_green = replace_color(slj, RGB{N0f8}(1.0,1.0,1.0) ,RGB{N0f8}(0.086,0.996,0.031), 25)
+
+slj_green = replace_color(slj_2b, RGB{N0f8}(1.0,1.0,1.0) ,RGB{N0f8}(0.086,0.996,0.031), 25)
+end
 
 # ╔═╡ ec57d0d0-51eb-413c-9ead-637aa80df728
 md"
@@ -555,14 +566,80 @@ md"
 **Write a function `mymagicwand(img,pix,threshold)` which takes an image, a start pixel and a threshold value between 0 and 100 of type Float64. The function should implement the magic wand tool from photoshop/gimp/etc., i.e. starting from the startpixel it should find a connected neighborhood of pixels that are similar (up to the threshold value) to the start pixel and set their RGB value to green (RGB(0,1,0)). The similarity between two pixels can be calculated with the function colordiff(). Use your function on the image `slj` to replace the white shirt to green and save your result as `slj_green2`.**
 "
 
-# ╔═╡ a3f5c6f8-a834-4375-8ffe-edbe9206769d
-function mymagicwand(img,pix,threshold)
+# ╔═╡ 196a08c6-2c20-4539-9938-829031db5c9b
+begin
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
+function replace_color_pixelwise(pixel, col_old, col_new, threshold)
+    # Check if the pixel is similar to the old color
+    if colordiff(pixel, col_old, metric = DE_2000()) <= threshold
+        # Debug: Show when a pixel is replaced
+        println("Replacing pixel: ", pixel, " -> ", col_new)
+        pixel = col_new
+    end
+    
+    return pixel  # Return the modified pixel
+end
+
+
+function iterative_flood_fill(image, x, y, target_color, replacement_color, threshold)
+    visited = falses(size(image))
+    stack = [(x, y)]  # Initialize stack with the starting pixel
+
+    while !isempty(stack)
+        curr_x, curr_y = pop!(stack)  # Pop the top element from the stack
+        
+        # Stopping conditions: out of bounds, already visited, or color mismatch
+        if curr_x < 1 || curr_y < 1 || curr_x > size(image, 1) || curr_y > size(image, 2)
+            continue
+        end
+        if visited[curr_x, curr_y] || colordiff(image[curr_x, curr_y], target_color, metric = DE_2000()) > threshold
+            continue
+        end
+        
+        # Mark as visited and replace pixel color
+        visited[curr_x, curr_y] = true
+        image[curr_x, curr_y] = replace_color_pixelwise(image[curr_x, curr_y], target_color, replacement_color, threshold)
+        
+        # Push the 4 neighbors to the stack
+        push!(stack, (curr_x + 1, curr_y))  # Right
+        push!(stack, (curr_x - 1, curr_y))  # Left
+        push!(stack, (curr_x, curr_y + 1))  # Down
+        push!(stack, (curr_x, curr_y - 1))  # Up
+    end
+
+    return image
+end
+
 
 end
 
+# ╔═╡ a3f5c6f8-a834-4375-8ffe-edbe9206769d
+function mymagicwand(img, pix, threshold)
+	img_corrected = deepcopy(img)
+    visited = falses(size(img))  # Create a visited array
+    x, y = pix[1], pix[2]       # Starting pixel
+
+    # Debugging: Print the starting pixel
+    println("Starting flood fill at: ", x, y)
+    
+    # Apply the flood fill
+    img_corrected = iterative_flood_fill(img_corrected, x, y, img[x,y], RGB{N0f8}(0.0, 1.0, 0.0), threshold)
+
+    # Debugging: Indicate the end of the flood fill
+    println("Flood fill completed")
+
+    return img_corrected
+end
+
+
 # ╔═╡ 85f30f37-dd00-4301-9952-8c2ada8b5069
 # replace with your solution on slj
-slj_green2 = slj;
+slj_green2 = mymagicwand(slj_2c, (132, 158), 37)
 
 # ╔═╡ a9737323-31e5-4b49-bcfc-a6d744c646ab
 md"
@@ -2358,7 +2435,7 @@ version = "3.6.0+0"
 # ╟─a6f78fd2-bca5-4ea4-b800-05e1a1bea3d3
 # ╠═def02976-2a91-11ec-3445-cde5b2d6b2b6
 # ╟─115d4c52-38f1-4372-87af-6863560facc8
-# ╠═c35433b6-9f62-4b1e-9f5c-efa8b236d1db
+# ╟─c35433b6-9f62-4b1e-9f5c-efa8b236d1db
 # ╟─b67fee7c-628d-491f-9870-60b699e3bf13
 # ╟─5396193d-c706-4e82-82b8-04cafddeff74
 # ╟─f9c64900-135b-4268-ad6a-541cdd4a6d9c
@@ -2379,11 +2456,13 @@ version = "3.6.0+0"
 # ╠═c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
 # ╟─5be44aa5-85d2-41db-8d24-89df7942c243
 # ╠═811b81dc-bf4a-4841-a028-46ac72f85498
+# ╠═b9cdffcb-706a-4eec-985e-f81c6faa3ec7
 # ╠═1dd07dc7-89e3-4cd5-8031-3a367b3c5563
 # ╠═629524b2-de7e-49f5-9c38-47be8aea8689
 # ╟─ec57d0d0-51eb-413c-9ead-637aa80df728
 # ╟─0541db74-3ecb-4a58-8433-839c98770f96
 # ╟─951b7ab5-8709-4afc-8cb8-c1080d638e33
+# ╠═196a08c6-2c20-4539-9938-829031db5c9b
 # ╠═a3f5c6f8-a834-4375-8ffe-edbe9206769d
 # ╠═85f30f37-dd00-4301-9952-8c2ada8b5069
 # ╟─a9737323-31e5-4b49-bcfc-a6d744c646ab
