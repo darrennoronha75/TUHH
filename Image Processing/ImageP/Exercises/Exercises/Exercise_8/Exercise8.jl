@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.0
+# v0.20.4
 
 using Markdown
 using InteractiveUtils
@@ -129,6 +129,72 @@ Another important ingredient for driving assitance is recognizing traffic lights
 **Write a function `traffic_light(img)` which takes an image of a traffic light and returns the color of the traffic light ('red','yellow' or 'green') as a string. Your function should return the correct results on the vector of images `ampel`.**
 "
 
+# ╔═╡ 51857e02-11b4-4f0a-a46a-c20eecf06945
+# begin
+# #Helper Functions
+	
+# # Function to calculate mean without the Statistics module
+# function mean_manual(arr)
+#     return sum(arr) / length(arr)
+# end
+	
+# function find_best_thresholds(ampel, correct_guesses, red_thresh_range, green_thresh_range, blue_thresh_range)
+#     best_accuracy = 0.0
+#     best_thresholds = (0.0, 0.0, 0.0)
+    
+#     for red_thresh in red_thresh_range
+#         for green_thresh in green_thresh_range
+#             for blue_thresh in blue_thresh_range
+#                 results = [traffic_light(img, red_thresh, green_thresh, blue_thresh) for img in ampel]
+#                 correct_count = sum(correct_guesses .== results)
+#                 accuracy = correct_count / length(correct_guesses)
+                
+#                 if accuracy == 1.0  # Stop early if 100% accuracy is reached
+#                     return (red_thresh, green_thresh, blue_thresh), accuracy
+#                 elseif accuracy > best_accuracy
+#                     best_accuracy = accuracy
+#                     best_thresholds = (red_thresh, green_thresh, blue_thresh)
+#                 end
+#             end
+#         end
+#     end
+    
+#     return best_thresholds, best_accuracy
+# end
+
+# function myhistogram(img, nbins)
+#     # Assuming img is a grayscale image with values between 0 and 1
+#     # Convert the image to an array of floats if needed
+#     img_float = Float64.(img)
+    
+#     # Calculate the bin edges
+#     min_intensity = 0.0
+#     max_intensity = 1.0
+#     bin_edges = range(min_intensity, stop=max_intensity, length=nbins + 1)
+
+#     # Collect the left edges of the bins
+#     xs = collect(bin_edges[1:end-1])
+
+#     # Initialize the counts for each bin to zero
+#     hs = zeros(Int, nbins)
+
+#     # Determine the appropriate bin for each pixel and increment the count
+#     for pixel in img_float
+#         # Calculate appropriate bin index manually in the formula
+#         # Calculating index using floor makes sure it's accurate placement in the correct bin
+#         if pixel == max_intensity
+#             hs[end] += 1  # Handle edge case for max intensity
+#         else
+#             bin_index = floor(Int, (pixel - min_intensity) / (max_intensity - min_intensity) * nbins) + 1
+#             hs[bin_index] += 1
+#         end
+#     end
+
+#     return xs, hs
+# end
+
+# end
+
 # ╔═╡ d1164798-8587-42b9-813a-8a54cb6038e4
 # Function to classify the color of the traffic light
 function traffic_light(img, red_thresh, green_thresh, blue_thresh)
@@ -152,72 +218,6 @@ function traffic_light(img, red_thresh, green_thresh, blue_thresh)
     else
         return "unknown"  # In case of unclear image
     end
-end
-
-# ╔═╡ 51857e02-11b4-4f0a-a46a-c20eecf06945
-begin
-#Helper Functions
-	
-# Function to calculate mean without the Statistics module
-function mean_manual(arr)
-    return sum(arr) / length(arr)
-end
-	
-function find_best_thresholds(ampel, correct_guesses, red_thresh_range, green_thresh_range, blue_thresh_range)
-    best_accuracy = 0.0
-    best_thresholds = (0.0, 0.0, 0.0)
-    
-    for red_thresh in red_thresh_range
-        for green_thresh in green_thresh_range
-            for blue_thresh in blue_thresh_range
-                results = [traffic_light(img, red_thresh, green_thresh, blue_thresh) for img in ampel]
-                correct_count = sum(correct_guesses .== results)
-                accuracy = correct_count / length(correct_guesses)
-                
-                if accuracy == 1.0  # Stop early if 100% accuracy is reached
-                    return (red_thresh, green_thresh, blue_thresh), accuracy
-                elseif accuracy > best_accuracy
-                    best_accuracy = accuracy
-                    best_thresholds = (red_thresh, green_thresh, blue_thresh)
-                end
-            end
-        end
-    end
-    
-    return best_thresholds, best_accuracy
-end
-
-function myhistogram(img, nbins)
-    # Assuming img is a grayscale image with values between 0 and 1
-    # Convert the image to an array of floats if needed
-    img_float = Float64.(img)
-    
-    # Calculate the bin edges
-    min_intensity = 0.0
-    max_intensity = 1.0
-    bin_edges = range(min_intensity, stop=max_intensity, length=nbins + 1)
-
-    # Collect the left edges of the bins
-    xs = collect(bin_edges[1:end-1])
-
-    # Initialize the counts for each bin to zero
-    hs = zeros(Int, nbins)
-
-    # Determine the appropriate bin for each pixel and increment the count
-    for pixel in img_float
-        # Calculate appropriate bin index manually in the formula
-        # Calculating index using floor makes sure it's accurate placement in the correct bin
-        if pixel == max_intensity
-            hs[end] += 1  # Handle edge case for max intensity
-        else
-            bin_index = floor(Int, (pixel - min_intensity) / (max_intensity - min_intensity) * nbins) + 1
-            hs[bin_index] += 1
-        end
-    end
-
-    return xs, hs
-end
-
 end
 
 # ╔═╡ fcb5c16a-fe91-4738-87dc-a3154b554591
@@ -300,14 +300,197 @@ let
 end
 
 
+# ╔═╡ b54fdb4a-7e19-4220-b1b3-a63d378801f2
+md"
+I have chosen to follow a stepwise approach here.
+
+**Step 1 - Cat Seperation from Green Background** 
+
+We find the best threshold (0.55) to work with, for pixel seperation.
+At this threshold value, all of the green pixels seem to be reliably removed.
+
+**Step 2 - Blending the Cat in with the Ikea Background** 
+
+We then continue with blending the cat with the Ikea background, with the solution-image provided for reference. The general location seems to be at ~680,600.
+
+It appears that the expected output only requires simple blending and the cat pixels need not be further modified to better fit in with the background. Please let me know if this assumption is wrong!
+
+Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+######
+"
+
 # ╔═╡ 1086a106-9ac9-44d2-9cef-47427007828c
-function replace_green(img)
+begin	
+
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
+# ========================================================
+# Function 1 - Replace Green and Add Alpha Channel to Image
+# ========================================================
+
+function replace_green(foreground_img, background_image, threshold, position)
+    # Removing the Green Background from the Cat
+    replace_green_with_white!(foreground_img, threshold, RGB(1.0, 1.0, 1.0))
+
+    # Applying an Alpha Channel to the Image
+    foreground_img = map(c -> c == RGB(1.0, 1.0, 1.0) ? RGBA(1.0, 1.0, 1.0, 0.0) : RGBA(c.r, c.g, c.b, 1.0), foreground_img)
+
+	#Apply Blending Function
+	final_image = blend_foreground_on_background(foreground_img, background_image, position, threshold)
+
+
+    return final_image
+end
+
+# ========================================================
+# Function 2 - Place Cat within Background Image
+# ========================================================
+
+function blend_foreground_on_background(foreground_processed, background_image, position, threshold=0.55)
+    
+    # Extract the RGBA channels of the foreground image
+    fg_rgb = [RGBA(red(foreground_processed[x, y]), green(foreground_processed[x, y]), blue(foreground_processed[x, y]), 1.0) for x in 1:size(foreground_processed, 1), y in 1:size(foreground_processed, 2)]
+    alpha_channel = [alpha(foreground_processed[x, y]) for x in 1:size(foreground_processed, 1), y in 1:size(foreground_processed, 2)]
+
+    # Get the size of the background and foreground images
+    background_height, background_width = size(background_image)
+    fg_height, fg_width = size(foreground_processed)
+
+    # Ensure the foreground fits within the background image dimensions
+    if position[1] + fg_height > background_height || position[2] + fg_width > background_width
+        error("Foreground image does not fit on the background at the specified position.")
+    end
+
+    # Blend the foreground image onto the background using the alpha channel
+    for x in 1:fg_height
+        for y in 1:fg_width
+            if alpha_channel[x, y] > 0  # If the foreground image pixel is not transparent
+                # Get the RGB values from the foreground (fg)
+                fg_color = RGBA(
+                    red(foreground_processed[x, y]),
+                    green(foreground_processed[x, y]),
+                    blue(foreground_processed[x, y]),
+                    alpha_channel[x, y]
+                )
+
+                # Get the background pixel (bg) at the corresponding position
+                bg_color = RGBA(
+                    red(background_image[position[1] + x - 1, position[2] + y - 1]),
+                    green(background_image[position[1] + x - 1, position[2] + y - 1]),
+                    blue(background_image[position[1] + x - 1, position[2] + y - 1]),
+                    1.0  # Fully opaque background
+                )
+
+                # Blend the pixels using the `blendOpaque` function
+                blended_color = blendOpaque(bg_color, fg_color)
+
+                # Update the background with the blended color
+                background_image[position[1] + x - 1, position[2] + y - 1] = RGB(red(blended_color), green(blended_color), blue(blended_color))
+            end
+        end
+    end
+
+    return background_image
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Function to Replace the Primary Background Color of Green
+function replace_green_with_white!(img, t, background_color)
+    # Iterate through the image and check each pixel
+    for i in 1:size(img, 1)  # Iterate over rows
+        for j in 1:size(img, 2)  # Iterate over columns
+            pixel = img[i, j]
+
+            # Check if the pixel is predominantly green
+            if abs(pixel.g) >= t && pixel.r < t && pixel.b < t
+                # Replace the pixel with the background color
+                img[i, j] = background_color
+            end
+        end
+    end
+    return img  # Return the modified image
+end
+
+# Function to iteratively test different thresholds and display results
+function test_thresholds_and_display(img, thresholds, position)
+    # Initialize a list to store the results
+    results = []
+
+    # Iterate over each threshold value
+    for threshold in thresholds
+        img_copy = deepcopy(img)  # Copy the original image to avoid modification
+        modified_img = replace_green(img_copy, threshold, position)  # Apply the function
+        
+        # Store the modified image and threshold for display
+        push!(results, (threshold, modified_img))
+    end
+
+    # Combine all images horizontally for comparison (side by side)
+    images_to_display = hcat(map(x -> x[2], results)...)
+    
+    # Save the combined image for display
+    save("combined_output.png", images_to_display)  
+    
+    # Optionally, print the threshold values for reference
+    # for result in results
+    #     println("Threshold: ", result[1])
+    # end
+
+    return images_to_display
+end
+
+# Function to Blend Pixels from two Images together 
+function blendOpaque(bg::C, fg::C) where {C<:TransparentColor}
+	# replace missing with your solution
+
+		result_pixel = if alpha(fg) > 0  # Check if the first pixel is not fully transparent
+		    fg
+		else
+		    bg
+		end
+
+		return result_pixel
+	end
+
+# ########################################################
+# ========================================================
+# Step Sequence to Test and Save the Different Thresholds 
+# for Cat GreenScreen Separation - Commented Out as No Longer Needed.
+# Please IGNORE
+# ========================================================
+# ########################################################
+
+# cat_original = deepcopy(cat)
+# cat_test_1 = deepcopy(cat)
+# cat_test_2 = deepcopy(cat)
+# cat_test_final = deepcopy(cat)
+
+# # Define a range of threshold values to test
+# thresholds = 0.05:0.05:0.8  # From 0.05 to 0.8 in steps of 0.05
+
+# # Test and display the images with different thresholds
+# test_thresholds_and_display(cat_original, thresholds, (680,600))
 
 end
 
-# ╔═╡ 6aff0636-757f-405e-9725-62e8aaf983a9
-# replace with your solution on cat and ikea
-ikea_cat = ikea;
+
+# ╔═╡ c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
+begin
+# ========================================================
+# Application of replace_green function on cat,ikea 
+# ========================================================
+    ikea_cat = replace_green(cat,ikea, 0.55,(680,600))    
+end
+
 
 # ╔═╡ 5be44aa5-85d2-41db-8d24-89df7942c243
 md"
@@ -315,14 +498,56 @@ md"
 **Write a function `replace_color(img,col_old,col_new,threshold)` which takes an image, two RGB-colors and a threshold value between 0 and 100. The function should replace the RGB-values of all pixels similar to `col_old` (up to the threshold value) to `col_new`. The similarity between two pixels can be calculated in the CIE Delta E 2000 metric with the function `colordiff()`. Use your function on the image `slj` to replace all similar-to-white pixels to green pixels and safe your result as `slj_green`.**
 "
 
+# ╔═╡ 811b81dc-bf4a-4841-a028-46ac72f85498
+md"
+I have chosen to follow a stepwise approach here.
+
+**Step 1 - Cat Seperation from Green Background** 
+
+We find the best threshold (0.55) to work with, for pixel seperation.
+At this threshold value, all of the green pixels seem to be reliably removed.
+
+**Step 2 - Blending the Cat in with the Ikea Background** 
+
+We then continue with blending the cat with the Ikea background, with the solution-image provided for reference. The general location seems to be at ~680,600.
+
+It appears that the expected output only requires simple blending and the cat pixels need not be further modified to better fit in with the background. Please let me know if this assumption is wrong!
+
+Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+######
+"
+
 # ╔═╡ 1dd07dc7-89e3-4cd5-8031-3a367b3c5563
+
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
 function replace_color(img,col_old,col_new,threshold)
+
+	img_corrected = deepcopy(img)
+
+	# Iterate through the image and check each pixel
+    for i in 1:size(img, 1)  # Iterate over rows
+        for j in 1:size(img, 2)  # Iterate over columns
+            pixel = img[i, j]
+
+            # Check if the pixel is predominantly green
+            if colordiff(pixel, col_old, metric = DE_2000()) <= threshold
+                # Replace the pixel with the background color
+                img[i, j] = col_new
+            end
+        end
+    end
+    return img_corrected  # Return the modified image
 
 end
 
 # ╔═╡ 629524b2-de7e-49f5-9c38-47be8aea8689
 # replace with your solution on slj
-slj_green = slj
+slj_green = replace_color(slj, RGB{N0f8}(1.0,1.0,1.0) ,RGB{N0f8}(0.086,0.996,0.031), 25)
 
 # ╔═╡ ec57d0d0-51eb-413c-9ead-637aa80df728
 md"
@@ -410,6 +635,18 @@ md"
 **All Solutions combined:**
 "
 
+# ╔═╡ eb9dfeaf-6505-408b-a89b-58fa61f9d622
+md"Solution to 2a"
+
+# ╔═╡ 526b8d09-4188-4d92-9451-fbcb089ab6f3
+ikea_cat
+
+# ╔═╡ cd2c1f20-916e-42dd-a2c4-aa1bc24bb7ce
+md"Solution to 2b"
+
+# ╔═╡ e74b4e08-c8ec-40c6-85ae-92096438fab9
+slj_green
+
 # ╔═╡ 1840441e-df5a-4216-8afe-c55aae48d8a1
 let
 	f=Figure(size=(600, 1500))
@@ -494,7 +731,7 @@ PlutoUI = "~0.7.15"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "ae49b083c948d6ee2bd92a4db20dbc5c8a66b4e8"
 
@@ -2121,7 +2358,7 @@ version = "3.6.0+0"
 # ╟─a6f78fd2-bca5-4ea4-b800-05e1a1bea3d3
 # ╠═def02976-2a91-11ec-3445-cde5b2d6b2b6
 # ╟─115d4c52-38f1-4372-87af-6863560facc8
-# ╟─c35433b6-9f62-4b1e-9f5c-efa8b236d1db
+# ╠═c35433b6-9f62-4b1e-9f5c-efa8b236d1db
 # ╟─b67fee7c-628d-491f-9870-60b699e3bf13
 # ╟─5396193d-c706-4e82-82b8-04cafddeff74
 # ╟─f9c64900-135b-4268-ad6a-541cdd4a6d9c
@@ -2136,12 +2373,14 @@ version = "3.6.0+0"
 # ╠═a81601e5-12ae-431a-aa20-db6a0faa48c1
 # ╠═f036efff-f34d-4ddb-9323-40487c1284cf
 # ╟─0907f8b0-6bef-4f26-a501-c4c53900e6fe
-# ╟─338c405c-f277-4b48-895b-87fb33b6d901
+# ╠═338c405c-f277-4b48-895b-87fb33b6d901
+# ╟─b54fdb4a-7e19-4220-b1b3-a63d378801f2
 # ╠═1086a106-9ac9-44d2-9cef-47427007828c
-# ╠═6aff0636-757f-405e-9725-62e8aaf983a9
+# ╠═c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
 # ╟─5be44aa5-85d2-41db-8d24-89df7942c243
+# ╠═811b81dc-bf4a-4841-a028-46ac72f85498
 # ╠═1dd07dc7-89e3-4cd5-8031-3a367b3c5563
-# ╟─629524b2-de7e-49f5-9c38-47be8aea8689
+# ╠═629524b2-de7e-49f5-9c38-47be8aea8689
 # ╟─ec57d0d0-51eb-413c-9ead-637aa80df728
 # ╟─0541db74-3ecb-4a58-8433-839c98770f96
 # ╟─951b7ab5-8709-4afc-8cb8-c1080d638e33
@@ -2159,7 +2398,11 @@ version = "3.6.0+0"
 # ╠═61e167ae-23b6-4631-abc0-098f0d1db833
 # ╠═f8747c2b-0b0d-4e1e-b6a2-4b6422803a08
 # ╟─51a5f0a0-41c6-4bb7-a28f-8cb993849cc0
-# ╟─1840441e-df5a-4216-8afe-c55aae48d8a1
+# ╟─eb9dfeaf-6505-408b-a89b-58fa61f9d622
+# ╟─526b8d09-4188-4d92-9451-fbcb089ab6f3
+# ╟─cd2c1f20-916e-42dd-a2c4-aa1bc24bb7ce
+# ╠═e74b4e08-c8ec-40c6-85ae-92096438fab9
+# ╠═1840441e-df5a-4216-8afe-c55aae48d8a1
 # ╟─fd7a7e8e-4fee-48c5-b834-8a523a2c92be
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
