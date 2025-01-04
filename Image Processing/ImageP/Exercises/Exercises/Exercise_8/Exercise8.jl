@@ -578,7 +578,7 @@ function replace_color_pixelwise(pixel, col_old, col_new, threshold)
     # Check if the pixel is similar to the old color
     if colordiff(pixel, col_old, metric = DE_2000()) <= threshold
         # Debug: Show when a pixel is replaced
-        println("Replacing pixel: ", pixel, " -> ", col_new)
+        # println("Replacing pixel: ", pixel, " -> ", col_new)
         pixel = col_new
     end
     
@@ -625,21 +625,24 @@ function mymagicwand(img, pix, threshold)
     x, y = pix[1], pix[2]       # Starting pixel
 
     # Debugging: Print the starting pixel
-    println("Starting flood fill at: ", x, y)
+    # println("Starting flood fill at: ", x, y)
     
     # Apply the flood fill
     img_corrected = iterative_flood_fill(img_corrected, x, y, img[x,y], RGB{N0f8}(0.0, 1.0, 0.0), threshold)
 
     # Debugging: Indicate the end of the flood fill
-    println("Flood fill completed")
+    # println("Flood fill completed")
 
     return img_corrected
 end
 
 
+# ╔═╡ cbb9639c-814f-4fe2-85f8-f71274a022bd
+println(size(slj))
+
 # ╔═╡ 85f30f37-dd00-4301-9952-8c2ada8b5069
 # replace with your solution on slj
-slj_green2 = mymagicwand(slj_2c, (132, 158), 37)
+slj_green2 = mymagicwand(slj_2c, (250, 101), 15)
 
 # ╔═╡ a9737323-31e5-4b49-bcfc-a6d744c646ab
 md"
@@ -2464,6 +2467,7 @@ version = "3.6.0+0"
 # ╟─951b7ab5-8709-4afc-8cb8-c1080d638e33
 # ╠═196a08c6-2c20-4539-9938-829031db5c9b
 # ╠═a3f5c6f8-a834-4375-8ffe-edbe9206769d
+# ╠═cbb9639c-814f-4fe2-85f8-f71274a022bd
 # ╠═85f30f37-dd00-4301-9952-8c2ada8b5069
 # ╟─a9737323-31e5-4b49-bcfc-a6d744c646ab
 # ╠═8f1da0d9-c431-4742-a56c-f5246677766a
