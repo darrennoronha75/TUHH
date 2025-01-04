@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="240"
+font-size="12" font-family="Bitstream Vera Sans">
+<switch transform="translate(258,39)">
+<text systemLanguage="en">Incoming light</text>
+<text systemLanguage="de">Lichteinfall</text>
+<text systemLanguage="pl">Światło wchodzące</text>
+<text>(1)</text></switch>
+<switch transform="translate(258,84)">
+<text systemLanguage="en">Filter layer</text>
+<text systemLanguage="de">Farbfilter</text>
+<text systemLanguage="pl">Warstwa filtru</text>
+<text>(2)</text></switch>
+<switch transform="translate(258,123)">
+<text systemLanguage="en">Sensor array</text>
+<text systemLanguage="de">CCD Matrix</text>
+<text systemLanguage="pl">Matrycy CCD</text>
+<text>(3)</text></switch>
+<switch transform="translate(258,203)">
+<text systemLanguage="en">Resulting pattern</text>
+<text systemLanguage="de">Ergebnis</text>
+<text systemLanguage="pl">Wzór wyknikowi</text>
+<text>(4)</text></switch>
+
+<path fill="#CCC" d="m10,90v60h60V90m30,0v60h60V90m30,0v60h60V90"/>
+<path fill="#FFF" d="m10,170v60h60V170m30,0v60h60V170m30,0v60h60V170"/>
+<path fill="#F00" d="m10,70h60v20H10zm15,0-3.5-7h3v-54h1v54h3m86.5
+7-3.5-7h3v-54h1v54h3m86.5,7-3.5-7h3v-54h1v54h3M25,125l-3.5-7h3v-30h1v30h3"/>
+<path fill="#0F0" d="m100,70h60v20h-60zm-60,0-3.5-7h3v-54h1v54h3m86.5
+7-3.5-7h3v-54h1v54h3m86.5,7-3.5-7h3v-54h1v54h3M130,125l-3.5-7h3v-30h1v30h3"/>
+<path fill="#00F" d="m190,70h60v20h-60zm-135,0-3.5-7h3v-54h1v54h3m86.5
+7-3.5-7h3v-54h1v54h3m86.5,7-3.5-7h3v-54h1v54h3M235,125l-3.5-7h3v-30h1v30h3"/>
+<g stroke-width="10" stroke-dasharray="10">
+<path stroke="#F00" d="m20,185h50m0,20H20m0,20h50"/>
+<path stroke="#0F0" d="m110,175h50m-10,10h-50m10,10h50m-10,10h-50m10,10h50m-10,10h-50"/>
+<path stroke="#00F" d="m190,175h50m0,20h-50m0,20h50"/></g>
+<g  stroke="#000">
+<path stroke-width="61" stroke-dasharray="1,9" d="m9.5,200h61m29,0h61m29
+0h61M40,169.5v61m90,0v-61m90,0v61"/>
+<path fill="none" d="M10,70v80h60V70zm0,20h60m30-20v80h60V70zm0
+20h60m30-20v80h60V70zm0,20h60"/></g>
+</svg>
