@@ -73,143 +73,67 @@ md"(*Kortli, Yassin & Marzougui, Mehrez & Bouallegue, Belgacem & Jaganathan, Sub
 **Use the functions already implemented over the last exercises to implement a function `preprocessing()` which should solve the preprocessing step for lane detection. Instead of the Sobel operator you can use the Prewitt Operator. Use your function preprocessing() with good chosen parameters on the images `street` and `foggy` and save the results as the images `pp_street` and `pp_foggy`.**
 "
 
-# ╔═╡ 7878d4a8-346c-4523-9883-f21d4f4994d2
-begin
-	
-function myhistogram(img,nbins)
-	# setup the nbins bins between 0 and 1 by assigning their left border to xr
-	xr=collect(range(0,1,length=nbins+1))[1:nbins]
-	# setup counting array
-	hs=zeros(Int,nbins)
-	# swipe trough all pixels
-	for I in CartesianIndices(img)
-		# assign correct bin by finding last left border, that is smaller or equal
-		ind=findlast(z->z<=img[I],xr)
-		# update number of pixels in that bin
-		hs[ind]+=1
-	end
-	return (xr,hs)
-end
-
-function adaptive_median(img, Smin, Smax)
-    # Convert the image to a floating-point format for better processing precision
-    img = Float64.(img)
-    out = copy(img)  # Create a copy to hold the output image
-
-    # Define the smallest and largest allowable neighborhood sizes
-    Smin_size = Smin[1]
-    Smax_size = Smax[1]
-
-    # Process each pixel in the image
-    for x in 1:size(img, 1)
-        for y in 1:size(img, 2)
-            # Start with the smallest neighborhood size
-            S = Smin_size
-
-            while S <= Smax_size
-                # Define the bounds of the neighborhood
-                x_min = max(1, x - div(S, 2))
-                x_max = min(size(img, 1), x + div(S, 2))
-                y_min = max(1, y - div(S, 2))
-                y_max = min(size(img, 2), y + div(S, 2))
-
-                # Extract the neighborhood pixels
-                neighborhood = img[x_min:x_max, y_min:y_max]
-                z_min = minimum(neighborhood)
-                z_max = maximum(neighborhood)
-                z_med = median(neighborhood)
-                z_xy = img[x, y]
-
-                # Level A: Is the median within the neighborhood range?
-                if z_min < z_med < z_max
-                    # Level B: Is the current pixel value valid?
-                    if z_min < z_xy < z_max
-                        out[x, y] = z_xy  # Keep the pixel as it is
-                    else
-                        out[x, y] = z_med  # Replace it with the median
-                    end
-                    break  # Move on to the next pixel
-                else
-                    # Expand the neighborhood and try again
-                    S += 2
-                end
-            end
-
-            # If we've exhausted all neighborhood sizes, fall back to the median
-            if S > Smax_size
-                out[x, y] = z_med
-            end
-        end
-    end
-
-    return Gray.(out)  # Return the final filtered image as grayscale
-end
-
-function t_otsu(img,nbins)
-	# calculate histogram
-	xs,H=myhistogram(img,nbins)
-	# predefine a helper array over which we want to minimize in the end
-	minimizer=[]
-	# precalculate k * H(k) for the means
-	xH = xs.*H
-	# for all possible (discrete) t's calculate (as defined above)..
-	for t=1:nbins-1
-		# .. the weights ..
-		wB = sum(H[1:t]); wW = sum(H[(t+1):end])
-		# .. the means ..
-		wB == 0 ? μB=0 : μB = sum(xH[1:t])/wB;
-		wW == 0 ? μW=0 : μW = sum(xH[(t+1):end])/wW
-		# .. the variances ..
-		σ2B = sum(((xs[1:t].-μB).^2) .* H[1:t])
-		σ2W = sum(((xs[(t+1):end].-μW).^2) .* H[(t+1):end])
-		# .. and save the sum of the variances to the minimizer array 
-		push!(minimizer,σ2B+σ2W)
-	end
-	# return t for the minimum in minimizer
-	return xs[argmin(minimizer)]
-end
-
-function mybinarize(img,t)
-	# return the binarization using t by broadcasting over all pixels 
-	return Gray.((x->x<=t ? 0 : 1).(img))
-end
-
-#Function to apply a Prewitt Filter on Img.
-function myprewitt(img)
-    # Convert to grayscale if the image is RGB
-    # if typeof(img) <: Matrix{ColorTypes.RGB}
-    img = Gray.(img)  # Convert to grayscale
-    # end
-
-    # Convert to numeric array (ensure it is in float)
-    # img = float(channelview(img))
-
-    ## Define the horizontal Prewitt filter (Gx)
-    Gx = [1  0 -1;
-          1  0 -1;
-          1  0 -1]
-
-    # Define the vertical Prewitt filter (Gy)
-    Gy = [1  1  1;
-          0  0  0;
-         -1 -1 -1]
-
-    # Apply the filters using `imfilter` (default padding is sufficient)
-    img_gx = imfilter(img, Gx)
-    img_gy = imfilter(img, Gy)
-
-    # Compute the edge magnitude
-    image_prewitt = sqrt.(img_gx.^2 + img_gy.^2)
-
-    return image_prewitt
-end
-end
-
 # ╔═╡ 797df1db-589d-4870-9853-292d44cbc3b3
-function preprocessing(img)
+begin
+
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+	
+function preprocessing(img, x_parameter = 5, y_parameter = 1, t = 0.5)
+	img_base = deepcopy(img)
+	img_base = Gray.(img)
+	img_base = apply_prewitt_operator(img_base, x_parameter, y_parameter)
+	img_base = apply_thresholding(img_base, t)
+	return img_base	
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+#
+function apply_prewitt_operator(img, x_parameter, y_parameter)
+
+	## Define the horizontal Prewitt filter (Gx)
+	Gx = [1  0 -1;
+	      1  0 -1;
+	      1  0 -1]
+
+	# Define the vertical Prewitt filter (Gy)
+	Gy = [1  1  1;
+	      0  0  0;
+	     -1 -1 -1]
+
+	img_gx = imfilter(img, Gx.*x_parameter)
+	img_gy = imfilter(img, Gy.*y_parameter)
+
+	image_prewitt = sqrt.(img_gx.^2 + img_gy.^2)
+
+	img = image_prewitt
 
 	return img
+end
+
+function apply_thresholding(img, t)
+
+	binary_image = img .>= t
 	
+	return binary_image
+	
+end
+
+# ########################################################
+# ========================================================
+# Step Sequence to Test and Save the Different Thresholds 
+# for Street Lane Detection
+# ========================================================
+# ########################################################
+
 end
 
 # ╔═╡ efd062e9-9b55-479b-83cd-45748b5432b8
@@ -882,15 +806,15 @@ function vertical_fading(img1, img2, pix1, pix2; method="sigmoid", k=0.1)
     img1_copy = deepcopy(img1)
     height, width = size(img1)
     
-    # Define the start and end columns for blending based on pix1 and pix2
+    # Define the start and end rows for blending based on pix1 and pix2
     start_row, end_row = pix1[1], pix2[1]
 
     # Iterate over each pixel in the image
     for x in 1:height, y in 1:width
-        # Copy pixels from img1 if they are left of pix1 (outside the blending range)
+        # Copy pixels from img1 if they are above of pix1 (outside the blending range)
         if x < start_row
             img1_copy[x, y] = img1[x, y]
-        # Copy pixels from img2 if they are right of pix2 (outside the blending range)
+        # Copy pixels from img2 if they are below of pix2 (outside the blending range)
         elseif x > end_row
             img1_copy[x, y] = img2[x, y]
         else
@@ -955,15 +879,111 @@ md"
 "
 
 # ╔═╡ 61e167ae-23b6-4631-abc0-098f0d1db833
-function myfading(img1,img2,pix1,pix2)
+begin
+# ########################################################
+# ========================================================
+# Main Function: myfading
+# ========================================================
+# ########################################################
+
+function myfading(img1, img2, pix1, pix2; method="sigmoid", k=0.5, d0=0.5)
+    # Ensure both images have the same size
+    @assert size(img1) == size(img2) "Images must have the same dimensions"
+    
+    # Create a copy of img1 to store the result
+    img1_copy = deepcopy(img1)
+    height, width = size(img1)
+    
+    # Define the line's coefficients for the line equation
+    x1, y1 = pix1
+    x2, y2 = pix2
+    dx = x2 - x1
+    dy = y2 - y1
+    
+    # Iterate over each pixel in the image
+    for x in 1:height
+        for y in 1:width
+            num = abs(dy * x - dx * y + x2 * y1 - y2 * x1)
+            den = sqrt(dy^2 + dx^2)
+            dist = num / den
+
+            fade_factor = dist / max(width, height)
+            
+            # Compute the blending factor 't' depending on the selected method (linear or sigmoid)
+            t = method == "linear" ? fade_factor : 1 / (1 + exp(-k * (fade_factor - d0)))  # Sigmoid interpolation
+
+            # Get the RGB values for the current pixel from both images
+            pixel1 = img1[x, y]
+            pixel2 = img2[x, y]
+
+            # Blend each RGB channel separately using the computed blending factor 't'
+            blended_pixel = RGB(
+                (1 - t) * red(pixel1) + t * red(pixel2),
+                (1 - t) * green(pixel1) + t * green(pixel2),
+                (1 - t) * blue(pixel1) + t * blue(pixel2)
+            )
+            
+            # Update the pixel in the copy with the blended pixel
+            img1_copy[x, y] = blended_pixel
+        end
+    end
+
+    # Return the final blended image
+    return img1_copy
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Calculate the coefficients A, B, and C for the line equation Ax + By + C = 0
+function define_line_from_pixels(pix1, pix2)
+    # Calculate slope of Line
+    m = (pix2[1] - pix1[1]) / (pix2[2] - pix1[2])
+
+    # y = mx + c, so when y = pix[1], c = pix[1] - m * pix[2]
+    c = pix2[1] - m * pix2[1]
+
+    # Consider Ax + By + C = 0, so A = m, B = -1, C = c
+    A = m
+    B = -1
+    C = c
+
+    return A, B, C
+end
+
+# Calculate the perpendicular distance from a point (x0, y0) to the line Ax + By + C = 0
+function calculate_perpendicular_distance(x0, y0, A, B, C)
+    # Calculate the perpendicular distance using the formula
+    numerator = abs(A * y0 + B * x0 + C)
+    denominator = sqrt(A^2 + B^2)
+    return numerator / denominator
+end
+
+# Calculate the distance between the two defined pixels
+function calculate_inter_pixel_distance(pix1, pix2)
+    return sqrt((pix2[2] - pix1[2])^2 + (pix2[1] - pix1[1])^2)
+end
+
 	
 end
 
+
 # ╔═╡ f8747c2b-0b0d-4e1e-b6a2-4b6422803a08
 begin
-	# replace with your solution..
-	vanakin = vader
-	avader = anakin
+	pix1_vanakin = (75, 60)
+	pix2_vanakin = (225, 180)
+	
+	pix1_avader = (75, 180)
+	pix2_avader = (225, 60)
+	
+	# Apply fading function for vanakin
+	vanakin = myfading(vader, anakin, pix1_vanakin, pix2_vanakin, method = "linear")
+	
+	# Apply fading function for avader
+	avader = myfading(anakin, vader, pix1_avader, pix2_avader)
 end;
 
 # ╔═╡ 51a5f0a0-41c6-4bb7-a28f-8cb993849cc0
@@ -2687,7 +2707,6 @@ version = "3.6.0+0"
 # ╟─b67fee7c-628d-491f-9870-60b699e3bf13
 # ╟─5396193d-c706-4e82-82b8-04cafddeff74
 # ╟─f9c64900-135b-4268-ad6a-541cdd4a6d9c
-# ╠═7878d4a8-346c-4523-9883-f21d4f4994d2
 # ╠═797df1db-589d-4870-9853-292d44cbc3b3
 # ╠═efd062e9-9b55-479b-83cd-45748b5432b8
 # ╠═7e5d07c1-5400-47f1-a125-144620d5ad5e
