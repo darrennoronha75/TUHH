@@ -74,7 +74,105 @@ md"(*Kortli, Yassin & Marzougui, Mehrez & Bouallegue, Belgacem & Jaganathan, Sub
 "
 
 # ╔═╡ 7878d4a8-346c-4523-9883-f21d4f4994d2
-#Re-using Function as Resolved in Submission - Noronha_Darren_Exercise3.jl
+begin
+	
+function myhistogram(img,nbins)
+	# setup the nbins bins between 0 and 1 by assigning their left border to xr
+	xr=collect(range(0,1,length=nbins+1))[1:nbins]
+	# setup counting array
+	hs=zeros(Int,nbins)
+	# swipe trough all pixels
+	for I in CartesianIndices(img)
+		# assign correct bin by finding last left border, that is smaller or equal
+		ind=findlast(z->z<=img[I],xr)
+		# update number of pixels in that bin
+		hs[ind]+=1
+	end
+	return (xr,hs)
+end
+
+function adaptive_median(img, Smin, Smax)
+    # Convert the image to a floating-point format for better processing precision
+    img = Float64.(img)
+    out = copy(img)  # Create a copy to hold the output image
+
+    # Define the smallest and largest allowable neighborhood sizes
+    Smin_size = Smin[1]
+    Smax_size = Smax[1]
+
+    # Process each pixel in the image
+    for x in 1:size(img, 1)
+        for y in 1:size(img, 2)
+            # Start with the smallest neighborhood size
+            S = Smin_size
+
+            while S <= Smax_size
+                # Define the bounds of the neighborhood
+                x_min = max(1, x - div(S, 2))
+                x_max = min(size(img, 1), x + div(S, 2))
+                y_min = max(1, y - div(S, 2))
+                y_max = min(size(img, 2), y + div(S, 2))
+
+                # Extract the neighborhood pixels
+                neighborhood = img[x_min:x_max, y_min:y_max]
+                z_min = minimum(neighborhood)
+                z_max = maximum(neighborhood)
+                z_med = median(neighborhood)
+                z_xy = img[x, y]
+
+                # Level A: Is the median within the neighborhood range?
+                if z_min < z_med < z_max
+                    # Level B: Is the current pixel value valid?
+                    if z_min < z_xy < z_max
+                        out[x, y] = z_xy  # Keep the pixel as it is
+                    else
+                        out[x, y] = z_med  # Replace it with the median
+                    end
+                    break  # Move on to the next pixel
+                else
+                    # Expand the neighborhood and try again
+                    S += 2
+                end
+            end
+
+            # If we've exhausted all neighborhood sizes, fall back to the median
+            if S > Smax_size
+                out[x, y] = z_med
+            end
+        end
+    end
+
+    return Gray.(out)  # Return the final filtered image as grayscale
+end
+
+function t_otsu(img,nbins)
+	# calculate histogram
+	xs,H=myhistogram(img,nbins)
+	# predefine a helper array over which we want to minimize in the end
+	minimizer=[]
+	# precalculate k * H(k) for the means
+	xH = xs.*H
+	# for all possible (discrete) t's calculate (as defined above)..
+	for t=1:nbins-1
+		# .. the weights ..
+		wB = sum(H[1:t]); wW = sum(H[(t+1):end])
+		# .. the means ..
+		wB == 0 ? μB=0 : μB = sum(xH[1:t])/wB;
+		wW == 0 ? μW=0 : μW = sum(xH[(t+1):end])/wW
+		# .. the variances ..
+		σ2B = sum(((xs[1:t].-μB).^2) .* H[1:t])
+		σ2W = sum(((xs[(t+1):end].-μW).^2) .* H[(t+1):end])
+		# .. and save the sum of the variances to the minimizer array 
+		push!(minimizer,σ2B+σ2W)
+	end
+	# return t for the minimum in minimizer
+	return xs[argmin(minimizer)]
+end
+
+function mybinarize(img,t)
+	# return the binarization using t by broadcasting over all pixels 
+	return Gray.((x->x<=t ? 0 : 1).(img))
+end
 
 #Function to apply a Prewitt Filter on Img.
 function myprewitt(img)
@@ -105,15 +203,12 @@ function myprewitt(img)
 
     return image_prewitt
 end
+end
 
 # ╔═╡ 797df1db-589d-4870-9853-292d44cbc3b3
 function preprocessing(img)
 
-	img = float(img)
-	gray_img = Gray.(img) 
-	prewitt_image = myprewitt(img)
-
-	return prewitt_image
+	return img
 	
 end
 
@@ -132,156 +227,74 @@ Another important ingredient for driving assitance is recognizing traffic lights
 **Write a function `traffic_light(img)` which takes an image of a traffic light and returns the color of the traffic light ('red','yellow' or 'green') as a string. Your function should return the correct results on the vector of images `ampel`.**
 "
 
-# ╔═╡ 51857e02-11b4-4f0a-a46a-c20eecf06945
-# begin
-# #Helper Functions
-	
-# # Function to calculate mean without the Statistics module
-# function mean_manual(arr)
-#     return sum(arr) / length(arr)
-# end
-	
-# function find_best_thresholds(ampel, correct_guesses, red_thresh_range, green_thresh_range, blue_thresh_range)
-#     best_accuracy = 0.0
-#     best_thresholds = (0.0, 0.0, 0.0)
-    
-#     for red_thresh in red_thresh_range
-#         for green_thresh in green_thresh_range
-#             for blue_thresh in blue_thresh_range
-#                 results = [traffic_light(img, red_thresh, green_thresh, blue_thresh) for img in ampel]
-#                 correct_count = sum(correct_guesses .== results)
-#                 accuracy = correct_count / length(correct_guesses)
-                
-#                 if accuracy == 1.0  # Stop early if 100% accuracy is reached
-#                     return (red_thresh, green_thresh, blue_thresh), accuracy
-#                 elseif accuracy > best_accuracy
-#                     best_accuracy = accuracy
-#                     best_thresholds = (red_thresh, green_thresh, blue_thresh)
-#                 end
-#             end
-#         end
-#     end
-    
-#     return best_thresholds, best_accuracy
-# end
-
-# function myhistogram(img, nbins)
-#     # Assuming img is a grayscale image with values between 0 and 1
-#     # Convert the image to an array of floats if needed
-#     img_float = Float64.(img)
-    
-#     # Calculate the bin edges
-#     min_intensity = 0.0
-#     max_intensity = 1.0
-#     bin_edges = range(min_intensity, stop=max_intensity, length=nbins + 1)
-
-#     # Collect the left edges of the bins
-#     xs = collect(bin_edges[1:end-1])
-
-#     # Initialize the counts for each bin to zero
-#     hs = zeros(Int, nbins)
-
-#     # Determine the appropriate bin for each pixel and increment the count
-#     for pixel in img_float
-#         # Calculate appropriate bin index manually in the formula
-#         # Calculating index using floor makes sure it's accurate placement in the correct bin
-#         if pixel == max_intensity
-#             hs[end] += 1  # Handle edge case for max intensity
-#         else
-#             bin_index = floor(Int, (pixel - min_intensity) / (max_intensity - min_intensity) * nbins) + 1
-#             hs[bin_index] += 1
-#         end
-#     end
-
-#     return xs, hs
-# end
-
-# end
-
-# ╔═╡ d1164798-8587-42b9-813a-8a54cb6038e4
-# Function to classify the color of the traffic light
-function traffic_light(img, red_thresh, green_thresh, blue_thresh)
-    # Split the image into RGB channels
-    red_channel = channelview(img)[1, :, :]
-    green_channel = channelview(img)[2, :, :]
-    blue_channel = channelview(img)[3, :, :]
-    
-    # Calculate the average intensities for each channel using mean_manual
-    avg_red = mean_manual(red_channel)
-    avg_green = mean_manual(green_channel)
-    avg_blue = mean_manual(blue_channel)
-    
-    # Classify based on the thresholds
-    if avg_red > red_thresh && avg_red > green_thresh && avg_red > blue_thresh
-        return "red"
-    elseif avg_green > red_thresh && avg_green > green_thresh && avg_green > blue_thresh
-        return "green"
-    elseif abs(avg_red - avg_green) < 0.1 && avg_red > blue_thresh  # Closer red and green values for yellow
-        return "yellow"
-    else
-        return "unknown"  # In case of unclear image
-    end
-end
-
-# ╔═╡ fcb5c16a-fe91-4738-87dc-a3154b554591
-let
-
-	red_channel_1 = channelview(ampel[1])[1, :, :]
-    green_channel_1 = channelview(ampel[1])[2, :, :]
-    blue_channel_1 = channelview(ampel[1])[3, :, :]
-	
-	f=Figure()
-	h=myhistogram(ampel[1],100)
-	ph=barplot(f[2,1],h...,axis=(title="histogram of bad gollum",xlabel="intensity",ylabel="#pixel"))
-	ax=image(f[1,1],rotr90(badgollum),axis=(title="bad gollum",aspect=1))
-	hidedecorations!(ax.axis)
-	f
-end
-
-# ╔═╡ a81601e5-12ae-431a-aa20-db6a0faa48c1
-# begin
-# # Example usage
-# correct_guesses = ["green", "red", "yellow", "red", "yellow", "green", "red", "yellow", "green", "red", "yellow", "green", "yellow", "red", "green"]
-
-# # Define the ranges for thresholds
-# red_thresh_range = 0.1:0.05:0.9
-# green_thresh_range = 0.1:0.05:0.9
-# blue_thresh_range = 0.1:0.05:0.9
-
-# # Find the best thresholds
-# best_thresholds, best_accuracy = find_best_thresholds(ampel, correct_guesses, red_thresh_range, green_thresh_range, blue_thresh_range)
-
-# println("Best thresholds: red = $(best_thresholds[1]), green = $(best_thresholds[2]), blue = $(best_thresholds[3])")
-# println("Best accuracy: $best_accuracy")
-
-# # Use these thresholds for future classification
-# results_with_best = [traffic_light(img, best_thresholds[1], best_thresholds[2], best_thresholds[3]) for img in ampel]
-
-# # Output the accuracy for each check made
-# println("Predicted traffic light colors with best thresholds: ", results_with_best)
-
-# # Print progress for each combination of thresholds
-# println("\nProgress of threshold testing:")
-# for red_thresh in red_thresh_range
-#     for green_thresh in green_thresh_range
-#         for blue_thresh in blue_thresh_range
-#             results = [traffic_light(img, red_thresh, green_thresh, blue_thresh) for img in ampel]
-#             correct_count = sum(correct_guesses .== results)
-#             accuracy = correct_count / length(correct_guesses)
-#             println("Red Thresh: $red_thresh, Green Thresh: $green_thresh, Blue Thresh: $blue_thresh, Accuracy: $accuracy")
-#             if accuracy == 1.0
-#                 println("100% accuracy achieved! Stopping further checks.")
-#                 return
-#             end
-#         end
-#     end
-# end
-
-# end
-
-
 # ╔═╡ f036efff-f34d-4ddb-9323-40487c1284cf
 ampel
+
+# ╔═╡ 05c9e4fc-9a83-471a-b7aa-aa9d70fbcaee
+begin
+
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
+function traffic_light(img)
+
+	#Divide Image Into 3 Regions - By Convention, the order is Red-Yellow-Green
+	red_region, yellow_region, green_region = divide_traffic_light_regions(img)
+	light_detected = detect_light(red_region, yellow_region, green_region)
+
+	return light_detected
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Function to Split an Image into 3 Regions height-wise
+function divide_traffic_light_regions(img)
+	height, width = size(img)[1:2]
+	region_size = div(height, 3)
+
+	#Define the Three Regions
+	region1 = img[1:region_size,:]
+    region2 = img[region_size+1:2*region_size,:]
+    region3 = img[2*region_size+1:end, :]	
+	
+	return region1, region2, region3
+end
+
+# Function to detech which Signal is active
+function detect_light(region1, region2, region3)
+
+	#Extract Red Intensity from Red Channel
+	red_intensity = mean(channelview(region1)[1,:,:])
+
+	#Extract Green Intensity - In case of Yellow, Green_Intensity will dominate.
+	yellow_intensity = mean(channelview(region2)[2,:,:])
+	green_intensity = mean(channelview(region3)[2,:,:])
+
+	#Select
+	if red_intensity > yellow_intensity && red_intensity > green_intensity
+		return "red"
+	elseif yellow_intensity > green_intensity && yellow_intensity > red_intensity
+		return "yellow"
+	elseif green_intensity > yellow_intensity && green_intensity > red_intensity
+		return "green"
+	end
+end
+
+# Function to calculate Mean in absence of Statistics Module
+function mean(arr)
+    total = sum(arr)     
+    count = length(arr)      
+    return total / count     
+end
+
+end
 
 # ╔═╡ 0907f8b0-6bef-4f26-a501-c4c53900e6fe
 md"
@@ -536,12 +549,12 @@ function replace_color(img,col_old,col_new,threshold)
 	# Iterate through the image and check each pixel
     for i in 1:size(img, 1)  # Iterate over rows
         for j in 1:size(img, 2)  # Iterate over columns
-            pixel = img[i, j]
+            pixel = img_corrected[i, j]
 
             # Check if the pixel is predominantly green
             if colordiff(pixel, col_old, metric = DE_2000()) <= threshold
                 # Replace the pixel with the background color
-                img[i, j] = col_new
+                img_corrected[i, j] = col_new
             end
         end
     end
@@ -550,10 +563,12 @@ function replace_color(img,col_old,col_new,threshold)
 end
 
 # ╔═╡ 629524b2-de7e-49f5-9c38-47be8aea8689
+begin
 # ========================================================
 # Application of replace_color function on slj
 # ========================================================
 slj_green = replace_color(slj_2b, RGB{N0f8}(1.0,1.0,1.0) ,RGB{N0f8}(0.086,0.996,0.031), 25)
+end
 
 # ╔═╡ ec57d0d0-51eb-413c-9ead-637aa80df728
 md"
@@ -711,74 +726,25 @@ Please find the functions used below. The final cell in this section apply the m
 # ╔═╡ dc04941d-dc3c-4843-967d-dc741cdff453
 begin
 
-begin
-    # ########################################################
-    # ========================================================
-    # Helper Functions
-    # ========================================================
-    # ########################################################
-
-    function blend_foreground_on_background_2(foreground_processed, background_image, threshold=0.55)
-    # Get the size of the background and foreground images (assumed to be the same size)
-    fg_height, fg_width = size(foreground_processed)
-    bg_height, bg_width = size(background_image)
-
-    # Ensure that the images have the same size
-    if fg_height != bg_height || fg_width != bg_width
-        error("Foreground and background images must have the same size.")
-    end
-
-    # Create a copy of the background image in RGBA format to preserve alpha channel
-    updated_background = copy(RGBA.(background_image))  # Make a copy of the background image
-
-    # Blend the foreground image onto the background using the alpha channel
-    for x in 1:fg_height
-        for y in 1:fg_width
-            alpha_channel = alpha(foreground_processed[x, y])  # Get the alpha value for each pixel
-
-            if alpha_channel > threshold  # If the foreground image pixel is not transparent (above the threshold)
-                # Get the RGB values from the foreground (fg)
-                fg_color = RGBA(
-                    red(foreground_processed[x, y]),
-                    green(foreground_processed[x, y]),
-                    blue(foreground_processed[x, y]),
-                    alpha_channel  # Keep the alpha from the foreground
-                )
-
-                # Get the background pixel (bg) at the same position with alpha = 1.0 (fully opaque)
-                bg_color = RGBA(
-                    red(background_image[x, y]),
-                    green(background_image[x, y]),
-                    blue(background_image[x, y]),
-                    1.0  # Explicitly set alpha to 1.0 (fully opaque)
-                )
-
-                # Blend the pixels using the `blendOpaque` function
-                blended_color = blendOpaque(bg_color, fg_color)
-
-                # Update the background with the blended color while preserving the alpha channel
-                updated_background[x, y] = RGBA(red(blended_color), green(blended_color), blue(blended_color), 1.0)
-            end
-        end
-    end
-	
-
-    return updated_background
-end
-
-
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
 
     # Function to convert RGB{FixedPointNumbers.N0f8} to RGBA{FixedPointNumbers.N0f8}
     function rgb_to_rgba(rgb::RGB{FixedPointNumbers.N0f8})
         return RGBA{FixedPointNumbers.N0f8}(rgb.r, rgb.g, rgb.b, 1.0f0)  # Alpha is set to 1 (fully opaque)
     end
 
+	# Function to convert RGB{FixedPointNumbers.N0f8} to RGBA{FixedPointNumbers.N0f8}
+
     function convert_to_float64_rgba(rgba::RGBA{FixedPointNumbers.N0f8})
         return RGBA{Float64}(float(rgba.r), float(rgba.g), float(rgba.b), float(rgba.alpha))
     end
 
 end
-end
+
 
 # ╔═╡ 8f1da0d9-c431-4742-a56c-f5246677766a
 begin
@@ -872,7 +838,7 @@ end
 begin
 
 # ========================================================
-# Application of horizontal_fading to apply fading to Vader, Anakin
+# Application of horizontal_fading() to apply fading to Vader, Anakin
 # ========================================================
 	
 vanakin_hor_linear = horizontal_fading(vader, anakin, (150,40),(150,200); method ="linear")
@@ -1004,24 +970,6 @@ end;
 md"
 **All Solutions combined:**
 "
-
-# ╔═╡ eb9dfeaf-6505-408b-a89b-58fa61f9d622
-md"Solution to 2a"
-
-# ╔═╡ 526b8d09-4188-4d92-9451-fbcb089ab6f3
-ikea_cat
-
-# ╔═╡ cd2c1f20-916e-42dd-a2c4-aa1bc24bb7ce
-md"Solution to 2b"
-
-# ╔═╡ e74b4e08-c8ec-40c6-85ae-92096438fab9
-slj_green
-
-# ╔═╡ 6b8e4201-20cb-4fcf-bb42-94d13181953a
-slj_green2
-
-# ╔═╡ d93ef009-5af4-46a3-8c8c-11ab2e30b702
-slj_flamed
 
 # ╔═╡ 1840441e-df5a-4216-8afe-c55aae48d8a1
 let
@@ -2744,11 +2692,8 @@ version = "3.6.0+0"
 # ╠═efd062e9-9b55-479b-83cd-45748b5432b8
 # ╠═7e5d07c1-5400-47f1-a125-144620d5ad5e
 # ╟─93bf96b2-c02e-492e-a0a6-563c46214530
-# ╠═51857e02-11b4-4f0a-a46a-c20eecf06945
-# ╠═d1164798-8587-42b9-813a-8a54cb6038e4
-# ╠═fcb5c16a-fe91-4738-87dc-a3154b554591
-# ╠═a81601e5-12ae-431a-aa20-db6a0faa48c1
 # ╠═f036efff-f34d-4ddb-9323-40487c1284cf
+# ╠═05c9e4fc-9a83-471a-b7aa-aa9d70fbcaee
 # ╟─0907f8b0-6bef-4f26-a501-c4c53900e6fe
 # ╠═338c405c-f277-4b48-895b-87fb33b6d901
 # ╟─b54fdb4a-7e19-4220-b1b3-a63d378801f2
@@ -2756,7 +2701,7 @@ version = "3.6.0+0"
 # ╠═c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
 # ╟─5be44aa5-85d2-41db-8d24-89df7942c243
 # ╟─811b81dc-bf4a-4841-a028-46ac72f85498
-# ╟─b9cdffcb-706a-4eec-985e-f81c6faa3ec7
+# ╠═b9cdffcb-706a-4eec-985e-f81c6faa3ec7
 # ╠═1dd07dc7-89e3-4cd5-8031-3a367b3c5563
 # ╠═629524b2-de7e-49f5-9c38-47be8aea8689
 # ╟─ec57d0d0-51eb-413c-9ead-637aa80df728
@@ -2783,13 +2728,7 @@ version = "3.6.0+0"
 # ╠═61e167ae-23b6-4631-abc0-098f0d1db833
 # ╠═f8747c2b-0b0d-4e1e-b6a2-4b6422803a08
 # ╟─51a5f0a0-41c6-4bb7-a28f-8cb993849cc0
-# ╟─eb9dfeaf-6505-408b-a89b-58fa61f9d622
-# ╟─526b8d09-4188-4d92-9451-fbcb089ab6f3
-# ╟─cd2c1f20-916e-42dd-a2c4-aa1bc24bb7ce
-# ╠═e74b4e08-c8ec-40c6-85ae-92096438fab9
-# ╠═6b8e4201-20cb-4fcf-bb42-94d13181953a
-# ╠═d93ef009-5af4-46a3-8c8c-11ab2e30b702
-# ╠═1840441e-df5a-4216-8afe-c55aae48d8a1
+# ╟─1840441e-df5a-4216-8afe-c55aae48d8a1
 # ╟─fd7a7e8e-4fee-48c5-b834-8a523a2c92be
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
