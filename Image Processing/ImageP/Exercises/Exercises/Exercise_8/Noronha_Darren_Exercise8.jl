@@ -22,9 +22,6 @@ md"""
 📅 Due date: 07.01.2025, 1 pm
 """
 
-# ╔═╡ eac19957-b54f-4cfb-a9ee-4f16fa49e90e
-
-
 # ╔═╡ 115d4c52-38f1-4372-87af-6863560facc8
 md"""
 **This exercise sheet is designed as a summary over the things we did in the last weeks. The tasks will let some space for you to decide how to solve the problems and therefore there will be no autograding for this sheet. Instead your solutions should generate some images printed in the last cells, which will get graded by hand.**
@@ -73,6 +70,26 @@ md"(*Kortli, Yassin & Marzougui, Mehrez & Bouallegue, Belgacem & Jaganathan, Sub
 **Use the functions already implemented over the last exercises to implement a function `preprocessing()` which should solve the preprocessing step for lane detection. Instead of the Sobel operator you can use the Prewitt Operator. Use your function preprocessing() with good chosen parameters on the images `street` and `foggy` and save the results as the images `pp_street` and `pp_foggy`.**
 "
 
+# ╔═╡ e14bcf3c-1503-411d-9dc5-812dffcf5a9d
+md"
+I have followed a stepwise approach as indicated by the diagram above.
+
+- **Step 1**  - Conversion to Grayscale Image
+- **Step 2**  - Apply Smoothing to Image (Adaptive Median Filtering)  
+- **Step 3**  - Apply Base Prewitt Filter to Image (good enough)
+- **Step 4**  - Apply Thresholding (via Otsu's Method)
+
+The controllable Parameters here are
+- *NBins* - Number of Histogram Bins - Controls Threshold Value that would be calculated by Otsu.
+- *SMax, SMin* - Neighbourhood Sizes for the Adaptive Median Filter - Control how large of a neighbourhood must be taken into account for the smoothing function.
+
+Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+
+**PS** - I have chosen to implicitly set the Maximum Neighbourhood size to be (5,5) and Minimum to be (3,3) viz - a 5x5 grid or 3x3 grid, as the results do not seem to change far too much with Adaptive Median Filtering with larger neighbourhood sizes.
+For the NBins decision, I have created a grid plot for comparision. Please find it below.
+######
+"
+
 # ╔═╡ 797df1db-589d-4870-9853-292d44cbc3b3
 begin
 
@@ -82,11 +99,12 @@ begin
 # ========================================================
 # ########################################################
 	
-function preprocessing(img, x_parameter = 5, y_parameter = 1, t = 0.5)
+function preprocessing(img, nbins = 1000)
 	img_base = deepcopy(img)
 	img_base = Gray.(img)
-	img_base = apply_prewitt_operator(img_base, x_parameter, y_parameter)
-	img_base = apply_thresholding(img_base, t)
+	img_base = apply_smoothing(img_base)
+	img_base = apply_prewitt_operator(img_base)
+	img_base = apply_thresholding(img_base, nbins)
 	return img_base	
 end
 
@@ -96,8 +114,11 @@ end
 # ========================================================
 # ########################################################
 
-#
-function apply_prewitt_operator(img, x_parameter, y_parameter)
+# Primary Preprocessing Functions
+#-------------------------------
+
+# Function to Apply the Prewitt Operator on the Grayscaled Image
+function apply_prewitt_operator(img)
 
 	## Define the horizontal Prewitt filter (Gx)
 	Gx = [1  0 -1;
@@ -109,8 +130,8 @@ function apply_prewitt_operator(img, x_parameter, y_parameter)
 	      0  0  0;
 	     -1 -1 -1]
 
-	img_gx = imfilter(img, Gx.*x_parameter)
-	img_gy = imfilter(img, Gy.*y_parameter)
+	img_gx = imfilter(img, Gx)
+	img_gy = imfilter(img, Gy)
 
 	image_prewitt = sqrt.(img_gx.^2 + img_gy.^2)
 
@@ -119,13 +140,144 @@ function apply_prewitt_operator(img, x_parameter, y_parameter)
 	return img
 end
 
-function apply_thresholding(img, t)
+#Function to Apply Smoothing on the Grayscaled Image
+function apply_smoothing(img)
+	return adaptive_median(img, (3,3), (5,5))
+end
 
+#Function to Apply Binary Thresholding on the Grayscaled Image
+function apply_thresholding(img, nbins)
+
+	t = t_otsu(img, nbins)
 	binary_image = img .>= t
-	
+
+	binary_image = Gray.(binary_image)
 	return binary_image
 	
 end
+
+# Smoothing Helper Functions
+#-------------------------------
+
+#Applying the Adaptive Median for neigbourhood-wise smoothing
+function adaptive_median(img, Smin, Smax)
+    # Convert the image to a floating-point format for better processing precision
+    img = Float64.(img)
+    out = copy(img)  # Create a copy to hold the output image
+
+    # Define the smallest and largest allowable neighborhood sizes
+    Smin_size = Smin[1]
+    Smax_size = Smax[1]
+
+    # Process each pixel in the image
+    for x in 1:size(img, 1)
+        for y in 1:size(img, 2)
+            # Start with the smallest neighborhood size
+            S = Smin_size
+            z_med = img[x, y]  # Default value in case the loop breaks early
+
+            while S <= Smax_size
+                # Define the bounds of the neighborhood
+                x_min = max(1, x - div(S, 2))
+                x_max = min(size(img, 1), x + div(S, 2))
+                y_min = max(1, y - div(S, 2))
+                y_max = min(size(img, 2), y + div(S, 2))
+
+                # Extract the neighborhood pixels
+                neighborhood = img[x_min:x_max, y_min:y_max]
+                z_min = minimum(neighborhood)
+                z_max = maximum(neighborhood)
+                z_med = median(neighborhood)
+                z_xy = img[x, y]
+
+                # Level A: Is the median within the neighborhood range?
+                if z_min < z_med < z_max
+                    # Level B: Is the current pixel value valid?
+                    if z_min < z_xy < z_max
+                        out[x, y] = z_xy  # Keep the pixel as it is
+                    else
+                        out[x, y] = z_med  # Replace it with the median
+                    end
+                    break  # Move on to the next pixel
+                else
+                    # Expand the neighborhood and try again
+                    S += 2
+                end
+            end
+
+            # If we've exhausted all neighborhood sizes, fall back to the median
+            if S > Smax_size
+                out[x, y] = z_med
+            end
+        end
+    end
+
+    return Gray.(out)  # Return the final filtered image as grayscale
+end
+
+# Function to Calculate the Median of All Elements in a Matrix
+function median(mat::AbstractMatrix{T}) where T <: Number
+    # Flatten the matrix into a single vector of values
+    flattened = vec(mat)
+    
+    # Sort the flattened vector
+    sorted_data = sort(flattened)
+    
+    # Calculate the number of elements
+    n = length(sorted_data)
+
+    # Calculate the median based on whether the number of elements is odd or even
+    if n % 2 == 1
+        return sorted_data[div(n, 2) + 1]  # Odd: Middle element
+    else
+        return (sorted_data[div(n, 2)] + sorted_data[div(n, 2) + 1]) / 2  # Even: Average of two middle elements
+    end
+end
+	
+# Thresholding Helper Functions
+#-------------------------------
+
+# Function to Calculate Threshold using Otsu's Method - from Solution2.jl
+function t_otsu(img,nbins)
+	# calculate histogram
+	xs,H=myhistogram(img,nbins)
+	# predefine a helper array over which we want to minimize in the end
+	minimizer=[]
+	# precalculate k * H(k) for the means
+	xH = xs.*H
+	# for all possible (discrete) t's calculate (as defined above)..
+	for t=1:nbins-1
+		# .. the weights ..
+		wB = sum(H[1:t]); wW = sum(H[(t+1):end])
+		# .. the means ..
+		wB == 0 ? μB=0 : μB = sum(xH[1:t])/wB;
+		wW == 0 ? μW=0 : μW = sum(xH[(t+1):end])/wW
+		# .. the variances ..
+		σ2B = sum(((xs[1:t].-μB).^2) .* H[1:t])
+		σ2W = sum(((xs[(t+1):end].-μW).^2) .* H[(t+1):end])
+		# .. and save the sum of the variances to the minimizer array 
+		push!(minimizer,σ2B+σ2W)
+	end
+	# return t for the minimum in minimizer
+	return xs[argmin(minimizer)]
+end
+
+# Function to Create Histogram Representation of given Image
+function myhistogram(img,nbins)
+	# setup the nbins bins between 0 and 1 by assigning their left border to xr
+	xr=collect(range(0,1,length=nbins+1))[1:nbins]
+	# setup counting array
+	hs=zeros(Int,nbins)
+	# swipe trough all pixels
+	for I in CartesianIndices(img)
+		# assign correct bin by finding last left border, that is smaller or equal
+		ind=findlast(z->z<=img[I],xr)
+		# update number of pixels in that bin
+		hs[ind]+=1
+	end
+	return (xr,hs)
+end
+
 
 # ########################################################
 # ========================================================
@@ -134,15 +286,89 @@ end
 # ========================================================
 # ########################################################
 
+function visualize_thresholds(img, nbins_values::Vector{Int})
+    # Create a Figure with a fixed size
+    f = Figure(size = (1200, 1200))
+    
+    # Total number of nbins values
+    total_cells = length(nbins_values)
+    
+    # Dynamically calculate the number of rows and columns for best viewing
+    nrows = floor(Int, sqrt(total_cells))
+    ncols = ceil(Int, total_cells / nrows)
+    
+    # Image dimensions (used only for title text formatting)
+    img_width, img_height = size(img)
+    
+    # Loop over each nbins value
+    for idx in 1:total_cells
+        # Determine the row and column based on the index
+        row = div(idx - 1, ncols) + 1
+        col = mod(idx - 1, ncols) + 1
+        
+        # Current nbins value
+        nbins = nbins_values[idx]
+        
+        # Apply preprocessing for the current nbins value
+        img_corrected = preprocessing(img, nbins)
+        
+        # Calculate the starting pixel for the flood fill in the center of each grid cell
+        start_x = (col - 1) * div(img_width, ncols) + div(div(img_width, ncols), 2)
+        start_y = (row - 1) * div(img_height, nrows) + div(div(img_height, nrows), 2)
+        
+        # Place the transformed image on the grid at the appropriate position
+        ax = image(f[row, col], rotr90(img_corrected), 
+                   axis = (title = "X: $start_x, Y: $start_y\nnbins: $nbins", 
+                           aspect = img_height/img_width))
+        
+        # Hide decorations for clean visualization
+        hidedecorations!(ax.axis)
+    end
+	 # Adjust layout to reduce space between elements
+	
+	return f
+	
 end
 
+# ========================================================
+# Testing Out Different NBin Values and Plotting the Images
+# ========================================================
+# Define a range of nbins values
+nbins_values = [ 15, 20, 25, 30, 35, 40, 50, 100, 500, 1500, 10000]
+
+# Creating Image Grid for Street
+f_street = visualize_thresholds(street, nbins_values)
+# Creating Image Grid for Foggy
+f_foggy = visualize_thresholds(foggy, nbins_values)
+end;
+
+# ╔═╡ 75187ae6-2238-4fe2-9e51-219d19c7c538
+md"
+Here, I find the NBin Value of ~300 to be suitable for the solution.
+"
+
+# ╔═╡ 96bd7eff-15ac-42d7-b5a9-94e65454b923
+f_street
+
+# ╔═╡ 35426ca5-36a8-48ff-98ef-7a1546518125
+md"
+Here, I find the NBin Value of ~100 to be suitable for the solution.
+"
+
+# ╔═╡ e924e62a-e370-4a8b-8ad1-1c95c3c921fa
+f_foggy
+
 # ╔═╡ efd062e9-9b55-479b-83cd-45748b5432b8
-#replace with your solution on street
-pp_street = preprocessing(street)
+# ========================================================
+# Application of preprocessing on street image
+# ========================================================
+pp_street = preprocessing(street, 300)
 
 # ╔═╡ 7e5d07c1-5400-47f1-a125-144620d5ad5e
-#replace with your solution on foggy
-pp_foggy = preprocessing(foggy)
+# ========================================================
+# Application of preprocessing on foggy image
+# ========================================================
+pp_foggy = preprocessing(foggy, 100)
 
 # ╔═╡ 93bf96b2-c02e-492e-a0a6-563c46214530
 md"
@@ -151,8 +377,23 @@ Another important ingredient for driving assitance is recognizing traffic lights
 **Write a function `traffic_light(img)` which takes an image of a traffic light and returns the color of the traffic light ('red','yellow' or 'green') as a string. Your function should return the correct results on the vector of images `ampel`.**
 "
 
-# ╔═╡ f036efff-f34d-4ddb-9323-40487c1284cf
-ampel
+# ╔═╡ bece89c9-52b5-4d34-af19-9305d541227c
+md"
+I have chosen to follow a two-step approach here.
+
+**Step 1 - Split the Image into three Regions, Vertically**
+
+All the provided images in ampel, follow this convention. Most traffic signals in the world would also have this red-yellow-green pattern.
+
+**Step 2 - Region-Wise Intensity Detection Basis Channel Mean Value** 
+
+My approach post the region split was to work out which channels have the maximum intensity regionwise - my reasoning is that with the splitwise region, only the region with the active signal would have an easily discernible intensity spike, which we can then associate with the signal activation, and return the appropriate value.
+
+**PS** - To Detect Yellow, I have found that it is more reliable to use the Green Channel which shows high values in case of yellow as well, compared to blue.
+
+Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+######
+"
 
 # ╔═╡ 05c9e4fc-9a83-471a-b7aa-aa9d70fbcaee
 begin
@@ -424,13 +665,10 @@ end
 
 
 # ╔═╡ c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
-begin
 # ========================================================
 # Application of replace_green function on cat,ikea 
 # ========================================================
-    ikea_cat = replace_green(cat,ikea, 0.55,(680,600))    
-end
-
+ikea_cat = replace_green(cat,ikea, 0.55,(680,600))
 
 # ╔═╡ 5be44aa5-85d2-41db-8d24-89df7942c243
 md"
@@ -2701,20 +2939,24 @@ version = "3.6.0+0"
 # ╔═╡ Cell order:
 # ╟─a6f78fd2-bca5-4ea4-b800-05e1a1bea3d3
 # ╠═def02976-2a91-11ec-3445-cde5b2d6b2b6
-# ╠═eac19957-b54f-4cfb-a9ee-4f16fa49e90e
 # ╟─115d4c52-38f1-4372-87af-6863560facc8
 # ╟─c35433b6-9f62-4b1e-9f5c-efa8b236d1db
 # ╟─b67fee7c-628d-491f-9870-60b699e3bf13
 # ╟─5396193d-c706-4e82-82b8-04cafddeff74
 # ╟─f9c64900-135b-4268-ad6a-541cdd4a6d9c
+# ╟─e14bcf3c-1503-411d-9dc5-812dffcf5a9d
 # ╠═797df1db-589d-4870-9853-292d44cbc3b3
+# ╟─75187ae6-2238-4fe2-9e51-219d19c7c538
+# ╟─96bd7eff-15ac-42d7-b5a9-94e65454b923
+# ╟─35426ca5-36a8-48ff-98ef-7a1546518125
+# ╟─e924e62a-e370-4a8b-8ad1-1c95c3c921fa
 # ╠═efd062e9-9b55-479b-83cd-45748b5432b8
 # ╠═7e5d07c1-5400-47f1-a125-144620d5ad5e
 # ╟─93bf96b2-c02e-492e-a0a6-563c46214530
-# ╠═f036efff-f34d-4ddb-9323-40487c1284cf
+# ╟─bece89c9-52b5-4d34-af19-9305d541227c
 # ╠═05c9e4fc-9a83-471a-b7aa-aa9d70fbcaee
 # ╟─0907f8b0-6bef-4f26-a501-c4c53900e6fe
-# ╠═338c405c-f277-4b48-895b-87fb33b6d901
+# ╟─338c405c-f277-4b48-895b-87fb33b6d901
 # ╟─b54fdb4a-7e19-4220-b1b3-a63d378801f2
 # ╠═1086a106-9ac9-44d2-9cef-47427007828c
 # ╠═c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
