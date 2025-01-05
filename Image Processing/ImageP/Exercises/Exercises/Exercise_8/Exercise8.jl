@@ -22,6 +22,9 @@ md"""
 📅 Due date: 07.01.2025, 1 pm
 """
 
+# ╔═╡ eac19957-b54f-4cfb-a9ee-4f16fa49e90e
+
+
 # ╔═╡ 115d4c52-38f1-4372-87af-6863560facc8
 md"""
 **This exercise sheet is designed as a summary over the things we did in the last weeks. The tasks will let some space for you to decide how to solve the problems and therefore there will be no autograding for this sheet. Instead your solutions should generate some images printed in the last cells, which will get graded by hand.**
@@ -500,20 +503,13 @@ md"
 
 # ╔═╡ 811b81dc-bf4a-4841-a028-46ac72f85498
 md"
-I have chosen to follow a stepwise approach here.
+Here, I have built a simple pixelwise iterator that for each pixel; it calculates the color difference as mentioned in the problem statement. We choose 
 
-**Step 1 - Cat Seperation from Green Background** 
-
-We find the best threshold (0.55) to work with, for pixel seperation.
-At this threshold value, all of the green pixels seem to be reliably removed.
-
-**Step 2 - Blending the Cat in with the Ikea Background** 
-
-We then continue with blending the cat with the Ikea background, with the solution-image provided for reference. The general location seems to be at ~680,600.
-
-It appears that the expected output only requires simple blending and the cat pixels need not be further modified to better fit in with the background. Please let me know if this assumption is wrong!
+RGB{N0f8}(1.0,1.0,1.0) to represent white, 
+RGB{N0f8}(0.086,0.996,0.031) for green (taken from cat image)
 
 Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+
 ######
 "
 
@@ -554,11 +550,10 @@ function replace_color(img,col_old,col_new,threshold)
 end
 
 # ╔═╡ 629524b2-de7e-49f5-9c38-47be8aea8689
-begin
-# replace with your solution on slj
-
+# ========================================================
+# Application of replace_color function on slj
+# ========================================================
 slj_green = replace_color(slj_2b, RGB{N0f8}(1.0,1.0,1.0) ,RGB{N0f8}(0.086,0.996,0.031), 25)
-end
 
 # ╔═╡ ec57d0d0-51eb-413c-9ead-637aa80df728
 md"
@@ -566,19 +561,42 @@ md"
 **Write a function `mymagicwand(img,pix,threshold)` which takes an image, a start pixel and a threshold value between 0 and 100 of type Float64. The function should implement the magic wand tool from photoshop/gimp/etc., i.e. starting from the startpixel it should find a connected neighborhood of pixels that are similar (up to the threshold value) to the start pixel and set their RGB value to green (RGB(0,1,0)). The similarity between two pixels can be calculated with the function colordiff(). Use your function on the image `slj` to replace the white shirt to green and save your result as `slj_green2`.**
 "
 
-# ╔═╡ 196a08c6-2c20-4539-9938-829031db5c9b
+# ╔═╡ 4be3f20d-ae3a-4d5a-ba8c-8ce13acdc893
+md"
+Here, I find it useful to perform a kind-of grid search for the best starting-pixel value. While it is seemingly not possible to find something that selects the vest exactly with the magic wand, we find X:225 (width), Y:60 (height) with a threshold value of 13.5 to be a good starting point.
+
+######
+"
+
+# ╔═╡ a3f5c6f8-a834-4375-8ffe-edbe9206769d
 begin
+	
 # ########################################################
 # ========================================================
 # Main Function
 # ========================================================
 # ########################################################
 
+function mymagicwand(img, pix, threshold)
+	img_corrected = deepcopy(img)
+    visited = falses(size(img))  # Create a visited array
+    x, y = pix[1], pix[2]       # Starting pixel
+    
+    # Apply the flood fill
+    img_corrected = iterative_flood_fill(img_corrected, x, y, img[x,y], RGB{N0f8}(0.0, 1.0, 0.0), threshold)
+
+    return img_corrected
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
 function replace_color_pixelwise(pixel, col_old, col_new, threshold)
     # Check if the pixel is similar to the old color
     if colordiff(pixel, col_old, metric = DE_2000()) <= threshold
-        # Debug: Show when a pixel is replaced
-        # println("Replacing pixel: ", pixel, " -> ", col_new)
         pixel = col_new
     end
     
@@ -615,34 +633,64 @@ function iterative_flood_fill(image, x, y, target_color, replacement_color, thre
     return image
 end
 
+# ########################################################
+# ========================================================
+# Step Sequence to find the best Starting Pixel for SLJ - Plotting Code
+# ========================================================
+# ########################################################
 
+# Define grid size (n x n)
+n = 5  # Change this for different grid sizes
+
+# Create the figure with a specific size (600 width x 600 height) to fit the grid more compactly
+f = Figure(size = (600, 600))
+
+img_width, img_height = size(slj_green)
+
+# Calculate the width and height of each grid cell
+cell_width = div(img_width, n)
+cell_height = div(img_height, n)
+
+# Loop over the rows and columns of the grid
+for row in 1:n
+    for col in 1:n
+        # Calculate the starting pixel for the flood fill in the center of each grid cell
+        start_x = (col - 1) * cell_width + div(cell_width, 2)
+        start_y = (row - 1) * cell_height + div(cell_height, 2)
+        
+        # Threshold value for each grid cell
+        threshold_value = 13.5
+        
+        # Apply the magic wand transformation (starting from the center pixel)
+        img_corrected = mymagicwand(slj_green, (start_x, start_y), threshold_value)
+        
+        # Place the transformed image on the grid at the appropriate position
+        ax = image(f[row, col], rotr90(img_corrected), axis=(title="X: $start_x, Y: $start_y\nThreshold: $threshold_value", aspect=0.8))
+        
+        # Hide decorations for clean visualization
+        hidedecorations!(ax.axis)
+    end
 end
 
-# ╔═╡ a3f5c6f8-a834-4375-8ffe-edbe9206769d
-function mymagicwand(img, pix, threshold)
-	img_corrected = deepcopy(img)
-    visited = falses(size(img))  # Create a visited array
-    x, y = pix[1], pix[2]       # Starting pixel
-
-    # Debugging: Print the starting pixel
-    # println("Starting flood fill at: ", x, y)
-    
-    # Apply the flood fill
-    img_corrected = iterative_flood_fill(img_corrected, x, y, img[x,y], RGB{N0f8}(0.0, 1.0, 0.0), threshold)
-
-    # Debugging: Indicate the end of the flood fill
-    # println("Flood fill completed")
-
-    return img_corrected
+# Display the figure
+f	
 end
 
+# ╔═╡ af6aa506-15de-4c7b-a889-bae18e6fd339
+md"
+Further, we find the the starting-pixel-threshold-value combination of X:226 (width), Y:60 (height) with a threshold value of 13 to be a very close selector for the vest.
 
-# ╔═╡ cbb9639c-814f-4fe2-85f8-f71274a022bd
-println(size(slj))
+For the present, I submit this version of slj_green2 for the answer.
+
+######
+"
 
 # ╔═╡ 85f30f37-dd00-4301-9952-8c2ada8b5069
-# replace with your solution on slj
-slj_green2 = mymagicwand(slj_2c, (250, 101), 15)
+# ========================================================
+# Application of mymagicwand function on slj
+# ========================================================
+slj_green2 = mymagicwand(slj_2c, (226, 59), 13.98)
+
 
 # ╔═╡ a9737323-31e5-4b49-bcfc-a6d744c646ab
 md"
@@ -650,9 +698,109 @@ md"
 **Use your solutions from 2 a) and 2 c) to cut free the shirt in `slj` and blend the solution with the image `flames` to get an image of S. L. Jackson with a cool shirt. Save your solution as `slj_flamed`.**
 "
 
+# ╔═╡ 3c8ef73a-7d5b-4e5c-9e71-5576cf208e83
+md"
+I have reused my blendOpaque function from earlier to blend the flames image into the slj image with the vest pixels set to a transparency of 0.
+
+Additionally, I have type-converted the images to both be of rgba(Float64) for ease-of-work.
+
+Please find the functions used below. The final cell in this section apply the main and helper functions on the given input images. The output is then presented at the final section, as requested.
+######
+"
+
+# ╔═╡ dc04941d-dc3c-4843-967d-dc741cdff453
+begin
+
+begin
+    # ########################################################
+    # ========================================================
+    # Helper Functions
+    # ========================================================
+    # ########################################################
+
+    function blend_foreground_on_background_2(foreground_processed, background_image, threshold=0.55)
+    # Get the size of the background and foreground images (assumed to be the same size)
+    fg_height, fg_width = size(foreground_processed)
+    bg_height, bg_width = size(background_image)
+
+    # Ensure that the images have the same size
+    if fg_height != bg_height || fg_width != bg_width
+        error("Foreground and background images must have the same size.")
+    end
+
+    # Create a copy of the background image in RGBA format to preserve alpha channel
+    updated_background = copy(RGBA.(background_image))  # Make a copy of the background image
+
+    # Blend the foreground image onto the background using the alpha channel
+    for x in 1:fg_height
+        for y in 1:fg_width
+            alpha_channel = alpha(foreground_processed[x, y])  # Get the alpha value for each pixel
+
+            if alpha_channel > threshold  # If the foreground image pixel is not transparent (above the threshold)
+                # Get the RGB values from the foreground (fg)
+                fg_color = RGBA(
+                    red(foreground_processed[x, y]),
+                    green(foreground_processed[x, y]),
+                    blue(foreground_processed[x, y]),
+                    alpha_channel  # Keep the alpha from the foreground
+                )
+
+                # Get the background pixel (bg) at the same position with alpha = 1.0 (fully opaque)
+                bg_color = RGBA(
+                    red(background_image[x, y]),
+                    green(background_image[x, y]),
+                    blue(background_image[x, y]),
+                    1.0  # Explicitly set alpha to 1.0 (fully opaque)
+                )
+
+                # Blend the pixels using the `blendOpaque` function
+                blended_color = blendOpaque(bg_color, fg_color)
+
+                # Update the background with the blended color while preserving the alpha channel
+                updated_background[x, y] = RGBA(red(blended_color), green(blended_color), blue(blended_color), 1.0)
+            end
+        end
+    end
+	
+
+    return updated_background
+end
+
+
+
+    # Function to convert RGB{FixedPointNumbers.N0f8} to RGBA{FixedPointNumbers.N0f8}
+    function rgb_to_rgba(rgb::RGB{FixedPointNumbers.N0f8})
+        return RGBA{FixedPointNumbers.N0f8}(rgb.r, rgb.g, rgb.b, 1.0f0)  # Alpha is set to 1 (fully opaque)
+    end
+
+    function convert_to_float64_rgba(rgba::RGBA{FixedPointNumbers.N0f8})
+        return RGBA{Float64}(float(rgba.r), float(rgba.g), float(rgba.b), float(rgba.alpha))
+    end
+
+end
+end
+
 # ╔═╡ 8f1da0d9-c431-4742-a56c-f5246677766a
-#replace with your solution in slj
-slj_flamed = slj;
+begin
+
+# ========================================================
+# Application of blendOpaque with Map Function to transform pixels
+# ========================================================
+	
+#Performing Some Necessary Type Conversions so that earlier defined functions can be applied. 
+flames_changed = rgb_to_rgba.(flames)
+flames_changed = convert_to_float64_rgba.(flames_changed)
+
+
+# We also create a starting copy of slj_green2, slj_green3 and process the image to apply zero transparency on the green pixels.
+slj_green3 = deepcopy(slj_green2)
+slj_green3 = map(c -> c == RGB(0.0, 1.0, 0.0) ? RGBA(0.0, 1.0, 0.0, 0.0) : RGBA(c.r, c.g, c.b, 1.0), slj_green3)
+
+#We then apply our blending method (method extracted as image sizes are the same).
+slj_flamed = map((a, v) -> blendOpaque(a,v), flames_changed, slj_green3)
+
+end
+
 
 # ╔═╡ c1e80d23-34d5-4027-b953-981518ed102c
 md"
@@ -660,16 +808,92 @@ md"
 **Write a function `horizontal_fading(img1,img2,pix1,pix2)`, which takes two images of the same size and two pixels. The function should return an image which equals `img1` left of `pix1` and `img1` right of `pix2`. Between `pix1` and `pix2` the image should have a fading from `img1` to `img2` over the whole height. The fading can be linear or use a sigmoid-function. Use your solution to fade the images `vader` and `anakin` between `(150,40)` and `(150,200)` and save the resulting image as `vanakin_hor`.**
 "
 
-# ╔═╡ 3ed185d1-8fb2-471c-9992-611f015b3e7b
-function horizontal_fading(img1,img2,pix1,pix2)
+# ╔═╡ a8c7c76c-e260-4dfc-ba7d-f8655092df6e
+md"
+I have implemented both linear and sigmoid fading behavior for the two images.
+Please find the function used below. The final cell in this section applies the main function on the given input images. The output is then presented at the final section, as requested.
 
+######
+"
+
+# ╔═╡ 3ed185d1-8fb2-471c-9992-611f015b3e7b
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
+function horizontal_fading(img1, img2, pix1, pix2; method="sigmoid", k=0.1)
+    # Ensure both images have the same size
+    @assert size(img1) == size(img2) "Images must have the same dimensions"
+    
+    # Create a copy of img1 to store the result
+    img1_copy = deepcopy(img1)
+    height, width = size(img1)
+    
+    # Define the start and end columns for blending based on pix1 and pix2
+    start_col, end_col = pix1[2], pix2[2]
+
+    # Iterate over each pixel in the image
+    for x in 1:height, y in 1:width
+        # Copy pixels from img1 if they are left of pix1 (outside the blending range)
+        if y < start_col
+            img1_copy[x, y] = img1[x, y]
+        # Copy pixels from img2 if they are right of pix2 (outside the blending range)
+        elseif y > end_col
+            img1_copy[x, y] = img2[x, y]
+        else
+            # Compute the blending factor 't' depending on the selected method (linear or sigmoid)
+            t = method == "linear" ? 
+                (y - start_col) / (end_col - start_col) :  # Linear interpolation
+                1 / (1 + exp(-k * (y - (start_col + end_col) / 2)))  # Sigmoid interpolation
+
+            # Get the RGB values for the current pixel from both images
+            pixel1, pixel2 = img1[x, y], img2[x, y]
+
+            # Blend each RGB channel separately using the computed blending factor 't'
+            blended_pixel = RGB(
+                (1 - t) * red(pixel1) + t * red(pixel2),
+                (1 - t) * green(pixel1) + t * green(pixel2),
+                (1 - t) * blue(pixel1) + t * blue(pixel2)
+            )
+            
+            # Update the pixel in the copy with the blended pixel
+            img1_copy[x, y] = blended_pixel
+        end
+    end
+
+    # Return the final blended image
+    return img1_copy
 end
+
 
 # ╔═╡ 69e89640-2c67-4710-86fa-78eaa2dab231
 begin
-	# replace with your solution..
-	vanakin_hor = vader
+
+# ========================================================
+# Application of horizontal_fading to apply fading to Vader, Anakin
+# ========================================================
+	
+vanakin_hor_linear = horizontal_fading(vader, anakin, (150,40),(150,200); method ="linear")
+vanakin_hor = horizontal_fading(vader, anakin, (150,40),(150,200))
 end;
+
+# ╔═╡ 2031ff11-2e8b-45af-babc-0375f304acb0
+let
+f = Figure(size=(600, 300))
+
+# Place the first image (vanakin_hor_linear) in the first axis (row 1, column 1)
+ax1 = image(f[1, 1], rotr90(vanakin_hor_linear), axis=(title="Linear vanakin_hor", aspect=0.8))
+hidedecorations!(ax1.axis)
+
+# Place the second image (vanakin_hor) in the second axis (row 1, column 2)
+ax2 = image(f[1, 2], rotr90(vanakin_hor), axis=(title="Sigmoidal vanakin_hor",aspect=0.8))
+hidedecorations!(ax2.axis)
+
+# Display the figure
+f
+end
 
 # ╔═╡ 66d78986-b934-40eb-b784-0153d3b624a1
 md"
@@ -678,15 +902,81 @@ md"
 "
 
 # ╔═╡ 9e8cdca9-2aa0-4ea2-997a-b7d2168de162
-function vertical_fading(img1,img2,pix1,pix2)
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
 
+function vertical_fading(img1, img2, pix1, pix2; method="sigmoid", k=0.1)
+    # Ensure both images have the same size
+    @assert size(img1) == size(img2) "Images must have the same dimensions"
+    
+    # Create a copy of img1 to store the result
+    img1_copy = deepcopy(img1)
+    height, width = size(img1)
+    
+    # Define the start and end columns for blending based on pix1 and pix2
+    start_row, end_row = pix1[1], pix2[1]
+
+    # Iterate over each pixel in the image
+    for x in 1:height, y in 1:width
+        # Copy pixels from img1 if they are left of pix1 (outside the blending range)
+        if x < start_row
+            img1_copy[x, y] = img1[x, y]
+        # Copy pixels from img2 if they are right of pix2 (outside the blending range)
+        elseif x > end_row
+            img1_copy[x, y] = img2[x, y]
+        else
+            # Compute the blending factor 't' depending on the selected method (linear or sigmoid)
+            t = method == "linear" ? 
+                (x - start_row) / (end_row - start_row) :  # Linear interpolation
+                1 / (1 + exp(-k * (x - (start_row + end_row) / 2)))  # Sigmoid interpolation
+
+            # Get the RGB values for the current pixel from both images
+            pixel1, pixel2 = img1[x, y], img2[x, y]
+
+            # Blend each RGB channel separately using the computed blending factor 't'
+            blended_pixel = RGB(
+                (1 - t) * red(pixel1) + t * red(pixel2),
+                (1 - t) * green(pixel1) + t * green(pixel2),
+                (1 - t) * blue(pixel1) + t * blue(pixel2)
+            )
+            
+            # Update the pixel in the copy with the blended pixel
+            img1_copy[x, y] = blended_pixel
+        end
+    end
+
+    # Return the final blended image
+    return img1_copy
 end
+
 
 # ╔═╡ 6972f2d7-f89c-4204-a958-aa9755a902d9
 begin
-	# replace with your solution..
-	vanakin_ver = vader
+# ========================================================
+# Application of vertical_fading() to apply fading to Vader, Anakin
+# ========================================================	
+vanakin_ver_linear = vertical_fading(vader, anakin, (60,120),(240,120); method ="linear")
+vanakin_ver = vertical_fading(vader, anakin, (60,120),(240,120))
 end;
+
+# ╔═╡ c403158f-66f9-4c1a-88c4-56a8febee572
+let
+f = Figure(size=(600, 300))
+
+# Place the first image (vanakin_hor_linear) in the first axis (row 1, column 1)
+ax1 = image(f[1, 1], rotr90(vanakin_ver_linear), axis=(title="Linear vanakin_ver", aspect=0.8))
+hidedecorations!(ax1.axis)
+
+# Place the second image (vanakin_hor) in the second axis (row 1, column 2)
+ax2 = image(f[1, 2], rotr90(vanakin_ver), axis=(title="Sigmoidal vanakin_ver",aspect=0.8))
+hidedecorations!(ax2.axis)
+
+# Display the figure
+f
+end
 
 # ╔═╡ 5fa51c04-4292-4650-927b-1688d284db84
 md"
@@ -726,6 +1016,12 @@ md"Solution to 2b"
 
 # ╔═╡ e74b4e08-c8ec-40c6-85ae-92096438fab9
 slj_green
+
+# ╔═╡ 6b8e4201-20cb-4fcf-bb42-94d13181953a
+slj_green2
+
+# ╔═╡ d93ef009-5af4-46a3-8c8c-11ab2e30b702
+slj_flamed
 
 # ╔═╡ 1840441e-df5a-4216-8afe-c55aae48d8a1
 let
@@ -2437,6 +2733,7 @@ version = "3.6.0+0"
 # ╔═╡ Cell order:
 # ╟─a6f78fd2-bca5-4ea4-b800-05e1a1bea3d3
 # ╠═def02976-2a91-11ec-3445-cde5b2d6b2b6
+# ╠═eac19957-b54f-4cfb-a9ee-4f16fa49e90e
 # ╟─115d4c52-38f1-4372-87af-6863560facc8
 # ╟─c35433b6-9f62-4b1e-9f5c-efa8b236d1db
 # ╟─b67fee7c-628d-491f-9870-60b699e3bf13
@@ -2458,25 +2755,30 @@ version = "3.6.0+0"
 # ╠═1086a106-9ac9-44d2-9cef-47427007828c
 # ╠═c1eb211d-2a67-4d0d-b7f8-a44afc755bd8
 # ╟─5be44aa5-85d2-41db-8d24-89df7942c243
-# ╠═811b81dc-bf4a-4841-a028-46ac72f85498
-# ╠═b9cdffcb-706a-4eec-985e-f81c6faa3ec7
+# ╟─811b81dc-bf4a-4841-a028-46ac72f85498
+# ╟─b9cdffcb-706a-4eec-985e-f81c6faa3ec7
 # ╠═1dd07dc7-89e3-4cd5-8031-3a367b3c5563
 # ╠═629524b2-de7e-49f5-9c38-47be8aea8689
 # ╟─ec57d0d0-51eb-413c-9ead-637aa80df728
 # ╟─0541db74-3ecb-4a58-8433-839c98770f96
 # ╟─951b7ab5-8709-4afc-8cb8-c1080d638e33
-# ╠═196a08c6-2c20-4539-9938-829031db5c9b
+# ╟─4be3f20d-ae3a-4d5a-ba8c-8ce13acdc893
 # ╠═a3f5c6f8-a834-4375-8ffe-edbe9206769d
-# ╠═cbb9639c-814f-4fe2-85f8-f71274a022bd
+# ╟─af6aa506-15de-4c7b-a889-bae18e6fd339
 # ╠═85f30f37-dd00-4301-9952-8c2ada8b5069
 # ╟─a9737323-31e5-4b49-bcfc-a6d744c646ab
+# ╟─3c8ef73a-7d5b-4e5c-9e71-5576cf208e83
+# ╠═dc04941d-dc3c-4843-967d-dc741cdff453
 # ╠═8f1da0d9-c431-4742-a56c-f5246677766a
 # ╟─c1e80d23-34d5-4027-b953-981518ed102c
+# ╟─a8c7c76c-e260-4dfc-ba7d-f8655092df6e
 # ╠═3ed185d1-8fb2-471c-9992-611f015b3e7b
 # ╠═69e89640-2c67-4710-86fa-78eaa2dab231
+# ╠═2031ff11-2e8b-45af-babc-0375f304acb0
 # ╟─66d78986-b934-40eb-b784-0153d3b624a1
 # ╠═9e8cdca9-2aa0-4ea2-997a-b7d2168de162
 # ╠═6972f2d7-f89c-4204-a958-aa9755a902d9
+# ╠═c403158f-66f9-4c1a-88c4-56a8febee572
 # ╟─5fa51c04-4292-4650-927b-1688d284db84
 # ╠═61e167ae-23b6-4631-abc0-098f0d1db833
 # ╠═f8747c2b-0b0d-4e1e-b6a2-4b6422803a08
@@ -2485,6 +2787,8 @@ version = "3.6.0+0"
 # ╟─526b8d09-4188-4d92-9451-fbcb089ab6f3
 # ╟─cd2c1f20-916e-42dd-a2c4-aa1bc24bb7ce
 # ╠═e74b4e08-c8ec-40c6-85ae-92096438fab9
+# ╠═6b8e4201-20cb-4fcf-bb42-94d13181953a
+# ╠═d93ef009-5af4-46a3-8c8c-11ab2e30b702
 # ╠═1840441e-df5a-4216-8afe-c55aae48d8a1
 # ╟─fd7a7e8e-4fee-48c5-b834-8a523a2c92be
 # ╟─00000000-0000-0000-0000-000000000001
