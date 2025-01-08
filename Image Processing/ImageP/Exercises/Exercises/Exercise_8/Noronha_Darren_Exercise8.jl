@@ -1124,7 +1124,7 @@ begin
 # ========================================================
 # ########################################################
 
-function myfading(img1, img2, pix1, pix2; method="sigmoid", k=0.5, d0=0.5)
+function myfading(img1, img2, pix1, pix2)
     # Ensure both images have the same size
     @assert size(img1) == size(img2) "Images must have the same dimensions"
     
@@ -1137,38 +1137,52 @@ function myfading(img1, img2, pix1, pix2; method="sigmoid", k=0.5, d0=0.5)
     x2, y2 = pix2
     dx = x2 - x1
     dy = y2 - y1
+    inter_pixel_distance = calculate_inter_pixel_distance(pix1, pix2)
     
     # Iterate over each pixel in the image
     for x in 1:height
         for y in 1:width
+            # Compute the perpendicular distance of the pixel to the line
             num = abs(dy * x - dx * y + x2 * y1 - y2 * x1)
             den = sqrt(dy^2 + dx^2)
             dist = num / den
 
-            fade_factor = dist / max(width, height)
-            
-            # Compute the blending factor 't' depending on the selected method (linear or sigmoid)
-            t = method == "linear" ? fade_factor : 1 / (1 + exp(-k * (fade_factor - d0)))  # Sigmoid interpolation
+            # Determine the blending factor based on perpendicular distance
+            if dist > inter_pixel_distance
+                # Outside blending region, choose nearest endpoint
+                if sqrt((x - x1)^2 + (y - y1)^2) < sqrt((x - x2)^2 + (y - y2)^2)
+                    img1_copy[x, y] = img1[x, y]
+                else
+                    img1_copy[x, y] = img2[x, y]
+                end
+            else
+                # Compute the fade factor
+                fade_factor = dist / inter_pixel_distance
+                
+                # Compute the blending factor 't'
+                t = fade_factor
+                
+                # Get the RGB values for the current pixel from both images
+                pixel1 = img1[x, y]
+                pixel2 = img2[x, y]
 
-            # Get the RGB values for the current pixel from both images
-            pixel1 = img1[x, y]
-            pixel2 = img2[x, y]
-
-            # Blend each RGB channel separately using the computed blending factor 't'
-            blended_pixel = RGB(
-                (1 - t) * red(pixel1) + t * red(pixel2),
-                (1 - t) * green(pixel1) + t * green(pixel2),
-                (1 - t) * blue(pixel1) + t * blue(pixel2)
-            )
-            
-            # Update the pixel in the copy with the blended pixel
-            img1_copy[x, y] = blended_pixel
+                # Blend each RGB channel separately using the computed blending factor 't'
+                blended_pixel = RGB(
+                    clamp((1 - t) * red(pixel1) + t * red(pixel2), 0, 1),
+                    clamp((1 - t) * green(pixel1) + t * green(pixel2), 0, 1),
+                    clamp((1 - t) * blue(pixel1) + t * blue(pixel2), 0, 1)
+                )
+                
+                # Update the pixel in the copy with the blended pixel
+                img1_copy[x, y] = blended_pixel
+            end
         end
     end
 
     # Return the final blended image
     return img1_copy
 end
+
 
 # ########################################################
 # ========================================================
@@ -1218,7 +1232,7 @@ begin
 	pix2_avader = (225, 60)
 	
 	# Apply fading function for vanakin
-	vanakin = myfading(vader, anakin, pix1_vanakin, pix2_vanakin, method = "linear")
+	vanakin = myfading(vader, anakin, pix1_vanakin, pix2_vanakin)
 	
 	# Apply fading function for avader
 	avader = myfading(anakin, vader, pix1_avader, pix2_avader)
