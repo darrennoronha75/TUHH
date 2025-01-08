@@ -241,19 +241,135 @@ md"
 **Write a function `mybarcodescanner(img)`, which takes an image that contains a barcode in horizontal alignment and draws a (minimum) rectangular bounding box around it. Test your function on the images `barcode1` to `barcode4` and safe the results as `found_barcode1` to `found_barcode4`.**
 "
 
-# ╔═╡ 1c2deb69-9678-4f12-8df0-1eb355b6b36a
-barcode4
-
 # ╔═╡ 52d95f0b-2434-410e-b1d8-c562a022c588
-function mybarcodescanner(img)
-	
-	#Step 1 - Copy of Image and Converting to Grayscale Form
-	output = copy(img)
-	output = Gray.(output)
+begin
 
-	
-	return output
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
+function mybarcodescanner(img)
+
+    # Step 1 - Copy of Image and Converting to Grayscale Form. 
+    # We create a copy of the image that stays in color format so we can easily apply the bounding box later.
+    process_copy = deepcopy(img)
+
+    output = copy(img)
+    output = Gray.(output)
+
+    # Step 2 - Apply Sobel Operator on Image for horizontal, vertical, then subtract.
+    horizontal_gradient = apply_sobel_operator(output, "horizontal")
+	vertical_gradient = apply_sobel_operator(output, "vertical")
+	output = horizontal_gradient - vertical_gradient
+
+    # Step 3 - Apply Gaussian Blur on Image - input 9x9 Kernel
+    output = apply_gaussian_blur(output, 9)
+
+    # # Step 4 - Apply Binarization with threshold 0.7
+    output = apply_binarization(output, 0.7)
+
+    # # Step 5 - Apply Closing Operator with rectangular kernel size 7,21
+    # output = apply_closing_operator(output, (7, 21))
+
+    # # Step 6 - Apply Erosion Operator 4 Times, then Dilation Operator 4 Times
+    # output = apply_erosion_operator(output, 4)
+    # output = apply_dilation_operator(output, 4)
+
+    # # Step 7 - Apply provided Find Contours function on the output, store Output Contours
+    # output_contours = find_contours(output)
+
+    # # Step 8 - Sort Index Sets by size
+    # sorted_output_contours = apply_contour_sorting(output_contours)
+
+    # # Step 9 - Find the Minimum Bounding Box using provided bounding_box function
+    # min_bounding_box = bounding_box(sorted_output_contours[1])
+
+    # # Step 10 - Apply Bounding Box to output
+    # output = apply_bounding_box(process_copy, min_bounding_box)
+
+    return output
 end
+
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Function to apply the Sobel operator (for edge detection).
+function apply_sobel_operator(img, operator_type)
+
+    # Define the horizontal Sobel filter (Gx)
+    Gx = [-1  0  1;
+          -2  0  2;
+          -1  0  1]
+
+    # Define the vertical Prewitt filter (Gy)
+    Gy = [-1  -2  -1;
+           0   0   0;
+           1   2   1]
+
+	# Based on Operator Type, Convolve with the appropriate Kernel.
+	if operator_type == "horizontal"
+		image_sobel = imfilter(img, Gx)
+	end
+	if operator_type == "vertical"
+		image_sobel = imfilter(img, Gy)
+	end
+	
+    img = image_sobel
+	
+	# Clamps all values in img to the range [0, 1]
+	img = abs.(img)
+    return img
+end
+
+# Function to apply Gaussian blur to smooth the image.
+function apply_gaussian_blur(img, kernel_size)
+    return img
+end
+
+# Function to apply binarization (thresholding) on the image.
+function apply_binarization(img, threshold_value)
+	
+    t = threshold_value
+	binary_image = img .>= t
+	return binary_image
+	
+end
+
+# Function to apply morphological closing on the image.
+function apply_closing_operator(img, kernel_size)
+    return img
+end
+
+# Function to apply erosion on the image based on number of iterations specified.
+function apply_erosion_operator(img, num_iterations)
+    return img
+end
+
+# Function to apply dilation on the image based on number of iterations specified.
+function apply_dilation_operator(img, num_iterations)
+    return img
+end
+
+# Function to sort contours by size (e.g., largest to smallest).
+function apply_contour_sorting(output_contours)
+    sorted_output_contours = []
+    return sorted_output_contours
+	
+end
+
+# Function to apply a bounding box to an image.
+function apply_bounded_box(img, bounding_box)
+    return img
+end
+
+	end
+
 
 # ╔═╡ da8a3284-b2aa-4460-b7d9-6b1c5d62656b
 begin
@@ -287,6 +403,9 @@ Well, this kind of barcodescanner seems to have some issues with zebras, as it d
 ###### 🎓 b) (BONUS)
 **Write a function `myzebradetector(img)`, by adapting your solution from 2a), such that it works better for finding zebras. It should take an image that contains at least one zebra and draws a (minimum) rectangular bounding box around it. Test your function on the image `oasis` and safe the result as `found_zebra`.**
 """
+
+# ╔═╡ 4df99898-d263-423a-b738-cb8267b93b23
+oasis
 
 # ╔═╡ 64e7974a-7a02-45c0-be2f-c6b795c91754
 function myzebradetector(img)
@@ -2340,13 +2459,13 @@ version = "3.6.0+0"
 # ╠═36b1c764-b4fb-4a8f-88cb-531a2d50f675
 # ╟─7df5c3fb-73e6-4fdf-8e0c-9c3ae37949c1
 # ╟─2ec32693-8f65-42e4-b732-871e83682bce
-# ╟─0dd1e635-194a-4408-986b-0c373d74da24
+# ╠═0dd1e635-194a-4408-986b-0c373d74da24
 # ╟─bfab1cf4-46fb-4ac5-bb2a-d3d34b3f1059
-# ╠═1c2deb69-9678-4f12-8df0-1eb355b6b36a
 # ╠═52d95f0b-2434-410e-b1d8-c562a022c588
 # ╠═da8a3284-b2aa-4460-b7d9-6b1c5d62656b
-# ╟─5bb40ea9-4bc9-4293-ac2b-0d9c290d699d
+# ╠═5bb40ea9-4bc9-4293-ac2b-0d9c290d699d
 # ╟─e9b3880c-7fca-4051-b5ee-353dff46b455
+# ╠═4df99898-d263-423a-b738-cb8267b93b23
 # ╠═64e7974a-7a02-45c0-be2f-c6b795c91754
 # ╠═464ff9fe-093d-4dc9-84e6-8b4afcacbcdd
 # ╟─69a242da-d450-497e-8756-dcf2411e8afe
