@@ -243,7 +243,6 @@ md"
 
 # ╔═╡ 52d95f0b-2434-410e-b1d8-c562a022c588
 begin
-
 # ########################################################
 # ========================================================
 # Main Function
@@ -251,7 +250,6 @@ begin
 # ########################################################
 
 function mybarcodescanner(img)
-
     # Step 1 - Copy of Image and Converting to Grayscale Form. 
     # We create a copy of the image that stays in color format so we can easily apply the bounding box later.
     process_copy = deepcopy(img)
@@ -261,33 +259,40 @@ function mybarcodescanner(img)
 
     # Step 2 - Apply Sobel Operator on Image for horizontal, vertical, then subtract.
     horizontal_gradient = apply_sobel_operator(output, "horizontal")
-	vertical_gradient = apply_sobel_operator(output, "vertical")
-	output = horizontal_gradient - vertical_gradient
+    vertical_gradient = apply_sobel_operator(output, "vertical")
+    output = abs.(horizontal_gradient) - abs.(vertical_gradient)
 
     # Step 3 - Apply Gaussian Blur on Image - input 9x9 Kernel
     output = apply_gaussian_blur(output, 9)
 
-    # # Step 4 - Apply Binarization with threshold 0.7
+    # Step 4 - Apply Binarization with threshold 0.7
     output = apply_binarization(output, 0.7)
 
-    # # Step 5 - Apply Closing Operator with rectangular kernel size 7,21
-    # output = apply_closing_operator(output, (7, 21))
+    # Step 5 - Apply Closing Operator with rectangular kernel size 7,21
+    output = apply_closing_operator(output, (7, 21))
 
-    # # Step 6 - Apply Erosion Operator 4 Times, then Dilation Operator 4 Times
-    # output = apply_erosion_operator(output, 4)
-    # output = apply_dilation_operator(output, 4)
+    # Step 6 - Apply Erosion Operator 4 Times, then Dilation Operator 4 Times
+    output = apply_erosion_operator(output, 4)
+    output = apply_dilation_operator(output, 4)
 
-    # # Step 7 - Apply provided Find Contours function on the output, store Output Contours
-    # output_contours = find_contours(output)
+    # Step 7 - Apply provided Find Contours function on the output, store Output Contours
+    output_contours = find_contours(output)
 
-    # # Step 8 - Sort Index Sets by size
-    # sorted_output_contours = apply_contour_sorting(output_contours)
+    # Step 8 - Sort Index Sets by size
+    sorted_output_contours = apply_contour_sorting(output_contours)
 
-    # # Step 9 - Find the Minimum Bounding Box using provided bounding_box function
-    # min_bounding_box = bounding_box(sorted_output_contours[1])
+    # Step 9 - Find the Minimum Bounding Box using provided bounding_box function
+    min_bounding_box = boundingbox(sorted_output_contours[1])
 
-    # # Step 10 - Apply Bounding Box to output
-    # output = apply_bounding_box(process_copy, min_bounding_box)
+    # Step 10 - Apply Bounding Box to output
+    output = apply_bounded_box(process_copy, min_bounding_box)
+
+    # Debugging Code to see all the contour Plots - Commented Out
+    # for contour in sorted_output_contours
+    #     min_bounding_box = boundingbox(contour) 
+    #     # Plot a rectangle (bounding box) around the contour on the image
+    #     output = apply_bounded_box(process_copy, min_bounding_box)
+    # end
 
     return output
 end
@@ -301,75 +306,103 @@ end
 
 # Function to apply the Sobel operator (for edge detection).
 function apply_sobel_operator(img, operator_type)
-
     # Define the horizontal Sobel filter (Gx)
-    Gx = [-1  0  1;
-          -2  0  2;
-          -1  0  1]
+    Gx = [1  0  -1;
+          2  0  -2;
+          1  0  -1]
 
-    # Define the vertical Prewitt filter (Gy)
-    Gy = [-1  -2  -1;
+    # Define the vertical Sobel filter (Gy)
+    Gy = [1  2  1;
            0   0   0;
-           1   2   1]
+          -1  -2  -1]
 
-	# Based on Operator Type, Convolve with the appropriate Kernel.
-	if operator_type == "horizontal"
-		image_sobel = imfilter(img, Gx)
-	end
-	if operator_type == "vertical"
-		image_sobel = imfilter(img, Gy)
-	end
-	
+    # Based on Operator Type, Convolve with the appropriate Kernel.
+    if operator_type == "horizontal"
+        image_sobel = imfilter(img, Gx)
+    end
+    if operator_type == "vertical"
+        image_sobel = imfilter(img, Gy)
+    end
+
     img = image_sobel
-	
-	# Clamps all values in img to the range [0, 1]
-	img = abs.(img)
     return img
 end
 
 # Function to apply Gaussian blur to smooth the image.
 function apply_gaussian_blur(img, kernel_size)
+    # Creating a Gaussian Kernel using the formula
+    # We use a sigma value of 1.0 as default
+    sigma = 1.0
+    gaussian_kernel = zeros(Float32, kernel_size, kernel_size)
+    center = div(kernel_size, 2)
+
+    # Populate the kernel using the Gaussian formula
+    for x in 1:kernel_size
+        for y in 1:kernel_size
+            dx = x - center - 1
+            dy = y - center - 1
+            gaussian_kernel[x, y] = exp(-(dx^2 + dy^2) / (2 * sigma^2)) / (2 * π * sigma^2)
+        end
+    end
+
+    # Normalize the kernel to ensure the sum is 1
+    gaussian_kernel ./= sum(gaussian_kernel)
+
+    # Convolving the Gaussian Kernel with the Image
+    image_gaussian = imfilter(img, gaussian_kernel)
+    img = image_gaussian
+
     return img
 end
 
 # Function to apply binarization (thresholding) on the image.
 function apply_binarization(img, threshold_value)
-	
     t = threshold_value
-	binary_image = img .>= t
-	return binary_image
-	
+    binary_image = img .>= t
+    return binary_image
 end
 
 # Function to apply morphological closing on the image.
 function apply_closing_operator(img, kernel_size)
+    kernel = ones(Bool, kernel_size[1], kernel_size[2])
+    img = myclosing(img, kernel)
     return img
 end
 
 # Function to apply erosion on the image based on number of iterations specified.
+# Standard Kernel Used along with Provided Function
 function apply_erosion_operator(img, num_iterations)
+    for i in 1:num_iterations
+        img = myerode(img, ones(Bool, 3, 3))
+    end
     return img
 end
 
 # Function to apply dilation on the image based on number of iterations specified.
+# Standard Kernel Used along with Provided Function
 function apply_dilation_operator(img, num_iterations)
+    for i in 1:num_iterations
+        img = mydilate(img, ones(Bool, 3, 3))
+    end
     return img
 end
 
 # Function to sort contours by size (e.g., largest to smallest).
 function apply_contour_sorting(output_contours)
-    sorted_output_contours = []
+    sorted_output_contours = sort(output_contours, by = length, rev = true)
     return sorted_output_contours
-	
 end
 
 # Function to apply a bounding box to an image.
 function apply_bounded_box(img, bounding_box)
+    # for img_pixel in 1:b
+    for index in bounding_box
+        img[index] = RGB{N0f8}(0.0, 1.0, 0.0)
+    end
     return img
 end
 
-	end
-
+end
 
 # ╔═╡ da8a3284-b2aa-4460-b7d9-6b1c5d62656b
 begin
@@ -2451,7 +2484,7 @@ version = "3.6.0+0"
 
 # ╔═╡ Cell order:
 # ╟─b61860c6-543b-11ec-3137-c338cbc646c4
-# ╟─d7f93447-7f67-4f6a-bcce-8abab6d4e76c
+# ╠═d7f93447-7f67-4f6a-bcce-8abab6d4e76c
 # ╟─4633bd1f-64d2-4d3c-81f7-55525adb2027
 # ╟─c1882a6e-8498-47c0-a253-806ffac2905c
 # ╟─7442f2ba-fa0f-447e-b96f-4460b40681d1
