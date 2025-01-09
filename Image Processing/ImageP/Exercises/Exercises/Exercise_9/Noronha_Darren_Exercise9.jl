@@ -37,6 +37,11 @@ begin
 	car1 = load("./Img/car.jpg");
 	car2 = load("./Img/car_02.jpg");
 	oasis = load("./Img/oasis.jpg");
+
+	#Test Images - From Unsplash - References here - Will Be Commented Out as only .jl file can be submitted.
+	# - Photo by <a href="https://unsplash.com/@rondomondo?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Ron Dauphin</a> on <a href="https://unsplash.com/photos/zebra-in-wild-k-8-eX4Y3no?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>
+	zebras_wide = load("./Img/zebras_wide.jpg")
+	zebras_back = load("./Img/zebras_back_unsplash.jpg")
 end;
 
 # ╔═╡ 7442f2ba-fa0f-447e-b96f-4460b40681d1
@@ -241,6 +246,9 @@ md"
 **Write a function `mybarcodescanner(img)`, which takes an image that contains a barcode in horizontal alignment and draws a (minimum) rectangular bounding box around it. Test your function on the images `barcode1` to `barcode4` and safe the results as `found_barcode1` to `found_barcode4`.**
 "
 
+# ╔═╡ 093b7025-5223-4210-ba66-ef26c396adb4
+md"Below is a stepwise implementation of the given instructions - I have abstracted out the different stepwise operations for functionality to different 'apply' functions."
+
 # ╔═╡ 52d95f0b-2434-410e-b1d8-c562a022c588
 begin
 # ########################################################
@@ -410,6 +418,8 @@ begin
 	found_barcode2 = mybarcodescanner(barcode2)
 	found_barcode3 = mybarcodescanner(barcode3)
 	found_barcode4 = mybarcodescanner(barcode4)
+	found_oasis = mybarcodescanner(oasis)
+	
 end;
 
 # ╔═╡ 5bb40ea9-4bc9-4293-ac2b-0d9c290d699d
@@ -438,17 +448,217 @@ Well, this kind of barcodescanner seems to have some issues with zebras, as it d
 """
 
 # ╔═╡ 4df99898-d263-423a-b738-cb8267b93b23
-oasis
+md"
+
+**A Brief Summary of my Approach** - Technical Solution
+- Breakdown ofthe Detection Problem into Horizontal and Vertical Detection of Stripe Patterns
+- The solution from 1a is refactored towards both approaches, with custom parameters (found through testing) applied towards best finding the stripe patterns along both orientations. These may not work for the general case but seem to do decent for the two provided zebra images.
+- This time, I also use the Opening Operator to aid in vertical stripe detection for the binary image.
+- Then, to combine both bounding boxes - and the fact that the problem asks only that a single zebra be detected - we expect only a single contiguous, zebra entity to be present in the image. (ie - it is unlikely the zebra would be in multiple places in a standard image.). This means, that we can merge the bounding boxes, all I needed to do at that point is to write a combination function that merged the bounding boxes.
+
+I have validated that the merged bounded box solution as described above works atleast for some zebra images which are simple, that are not among the instructor provided images.
+
+**Drawbacks/Caveats of My Approach**
+- Bounding Box draw behaviour may be undefined around image boundaries. (as indexes outside Images may be returned in those cases, although I have not deeply tested this.)
+- My current solution does not work that great for zebra heads. Atleast if the zebra is facing its side to the image-taker. I would try to write another detector solely for zebra heads - these have a kind of triangular shape.
+"
 
 # ╔═╡ 64e7974a-7a02-45c0-be2f-c6b795c91754
-function myzebradetector(img)
-	# replace the identity-placeholder
-	output = copy(img)
-	return output
+begin
+
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+	
+function myzebradetector(input_img)
+	
+    img = deepcopy(input_img)
+
+	#Retrieve Bounding Coordinates for single Biggest Zebra - Horizontal and Vertically.
+    hor_x, hor_y = horizontal_stripes_detector(img)
+    ver_x, ver_y = vertical_stripes_detector(img)
+
+	#Draw the Rectangular Bounding Box - 
+    output = draw_custom_bounding_box(img, hor_x, hor_y, ver_x, ver_y)    
+    return output
+end
+
+# ########################################################
+# ========================================================
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Function to Detect Vertical Stripes in Image
+function vertical_stripes_detector(img)
+    # Step 1 - Copy of Image and Converting to Grayscale Form.
+    process_copy = deepcopy(img)
+    output = copy(img)
+    output = Gray.(output)
+
+    # Step 2 - Apply Sobel Operator on Image for horizontal, vertical, then subtract.
+    horizontal_gradient = apply_sobel_operator(output, "horizontal")
+    vertical_gradient = apply_sobel_operator(output, "vertical")
+    output = abs.(vertical_gradient) .- abs.(horizontal_gradient)
+
+    # Step 3 - Apply Gaussian Blur on Image - input 3x3 Kernel
+    output = apply_gaussian_blur(output, 3)
+
+    # Step 4 - Apply Binarization with threshold 0.7
+    output = apply_binarization(output, 0.7)
+
+    # Step 5 - Apply Closing Operator with rectangular kernel size 7,21
+    output = apply_closing_operator(output, (7, 21))
+
+    # Step 6 - Apply Erosion Operator 4 Times, then Dilation Operator 12 Times
+    output = apply_erosion_operator(output, 4)
+    output = apply_dilation_operator(output, 12)
+
+    output = apply_opening_operator(output, (17, 21))
+
+    # Step 7 - Apply provided Find Contours function on the output, store Output Contours
+    output_contours = find_contours(output)
+
+    # Step 8 - Sort Index Sets by size
+    sorted_output_contours = apply_contour_sorting(output_contours)
+
+    # Step 9 - Find the Minimum Bounding Box using provided bounding_box function
+    min_bounding_box = boundingbox(sorted_output_contours[1])
+
+    # Step 10 - Find the Diagonal Points for this bounding box - minimum and maximum.
+    x_bounds, y_bounds = bounds_along_axes(min_bounding_box)
+
+    return x_bounds, y_bounds
+end
+
+# Function to Detect Horizontal Stripes in Image
+function horizontal_stripes_detector(img)
+    # Step 1 - Copy of Image and Converting to Grayscale Form.
+    process_copy = deepcopy(img)
+    output = copy(img)
+    output = Gray.(output)
+
+    # Step 2 - Apply Sobel Operator on Image for horizontal, vertical, then subtract.
+    horizontal_gradient = apply_sobel_operator(output, "horizontal")
+    vertical_gradient = apply_sobel_operator(output, "vertical")
+    output = abs.(horizontal_gradient) .- abs.(vertical_gradient)
+
+    # Step 3 - Apply Gaussian Blur on Image - input 3x3 Kernel
+    output = apply_gaussian_blur(output, 3)
+
+    # Step 4 - Apply Binarization with threshold 0.7
+    output = apply_binarization(output, 0.7)
+
+    # Step 5 - Apply Closing Operator with rectangular kernel size 7,21
+    output = apply_closing_operator(output, (7, 21))
+
+    # Step 6 - Apply Erosion Operator 4 Times, then Dilation Operator 4 Times
+    output = apply_erosion_operator(output, 4)
+    output = apply_dilation_operator(output, 4)
+
+    # Step 7 - Apply provided Find Contours function on the output, store Output Contours
+    output_contours = find_contours(output)
+
+    # Step 8 - Sort Index Sets by size
+    sorted_output_contours = apply_contour_sorting(output_contours)
+
+    # Step 9 - Find the Minimum Bounding Box using provided bounding_box function
+    min_bounding_box = boundingbox(sorted_output_contours[1])
+
+    # Step 10 - Find the Diagonal Points for this bounding box - minimum and maximum.
+    x_bounds, y_bounds = bounds_along_axes(min_bounding_box)
+
+    return x_bounds, y_bounds
+end
+
+# Function to apply morphological opening on the image.
+function apply_opening_operator(img, kernel_size)
+    kernel = ones(Bool, kernel_size[1], kernel_size[2])
+    img = myopening(img, kernel)
+    return img
+end
+
+# Function to return the minimum and maximum Cartesian Indices for a defined Bounded Box.
+function bounds_along_axes(cartesian_indices::Vector{CartesianIndex{2}})
+    # Extract the x and y coordinates from the Cartesian indices
+    x_coords = [ci[1] for ci in cartesian_indices]
+    y_coords = [ci[2] for ci in cartesian_indices]
+    
+    # Find the minimum and maximum for both axes
+    min_x, max_x = minimum(x_coords), maximum(x_coords)
+    min_y, max_y = minimum(y_coords), maximum(y_coords)
+    
+    return (min_x, max_x), (min_y, max_y)
+end
+
+# Function to draw a Custom Bounding Box on the image
+function draw_custom_bounding_box(input_img, hor_x, hor_y, ver_x, ver_y)
+    img = deepcopy(input_img)
+    
+    # Determine the bounding box corners from the bounds
+    min_hor_x, max_hor_x = hor_x
+    min_hor_y, max_hor_y = hor_y
+    min_ver_x, max_ver_x = ver_x
+    min_ver_y, max_ver_y = ver_y
+
+    # Calculate the overall minimum (top-left corner of the rectangle)
+    min_x = min(min_hor_x, min_ver_x)
+    min_y = min(min_hor_y, min_ver_y)
+
+    # Calculate the overall maximum (bottom-right corner of the rectangle)
+    max_x = max(max_hor_x, max_ver_x)
+    max_y = max(max_hor_y, max_ver_y)
+
+    # Draw the rectangle outline
+    # Top and Bottom edges
+    for x in min_x:max_x
+        img[CartesianIndex(x, min_y)] = RGB{N0f8}(0.0, 1.0, 0.0)  # Top edge
+        img[CartesianIndex(x, max_y)] = RGB{N0f8}(0.0, 1.0, 0.0)  # Bottom edge
+    end
+
+    # Left and Right edges
+    for y in min_y:max_y
+        img[CartesianIndex(min_x, y)] = RGB{N0f8}(0.0, 1.0, 0.0)  # Left edge
+        img[CartesianIndex(max_x, y)] = RGB{N0f8}(0.0, 1.0, 0.0)  # Right edge
+    end
+
+    return img
+end
+
 end
 
 # ╔═╡ 464ff9fe-093d-4dc9-84e6-8b4afcacbcdd
-#found_zebra=myzebradetector(oasis)
+begin
+found_zebra = myzebradetector(oasis)
+# found_zebra = horizontal_stripes_detector(found_zebra)
+found_zebra_1a = myzebradetector(barcode4)
+# found_zebra_1a = horizontal_stripes_detector(found_zebra_1a)
+
+#Test Images - External
+# found_zebras_wide = vertical_stripes_detector(zebras_wide)
+# found_zebras_wide = horizontal_stripes_detector(found_zebras_wide)
+# found_zebras_back = vertical_stripes_detector(zebras_back)
+# found_zebras_back = horizontal_stripes_detector(found_zebras_back)
+end;
+
+# ╔═╡ 17e2d309-ec22-4064-a830-684cf93d3a69
+let
+	if (@isdefined found_barcode1) && (@isdefined found_barcode2) && (@isdefined found_barcode3) && (@isdefined found_barcode4)
+		f=Figure()
+	
+		ax=image(f[1,1],rotr90(found_zebra),axis=(;aspect=1.34))
+		hidedecorations!(ax.axis)
+		ax=image(f[1,2],rotr90(found_zebra_1a),axis=(;aspect=1.34))
+		hidedecorations!(ax.axis)
+		# ax=image(f[2,1],rotr90(found_zebras_wide),axis=(;aspect=1.34))
+		# hidedecorations!(ax.axis)
+		# ax=image(f[2,2],rotr90(found_zebras_back),axis=(;aspect=1.34))
+		# hidedecorations!(ax.axis)
+		f
+	end
+end
 
 # ╔═╡ 69a242da-d450-497e-8756-dcf2411e8afe
 md"""
@@ -2486,21 +2696,23 @@ version = "3.6.0+0"
 # ╟─b61860c6-543b-11ec-3137-c338cbc646c4
 # ╠═d7f93447-7f67-4f6a-bcce-8abab6d4e76c
 # ╟─4633bd1f-64d2-4d3c-81f7-55525adb2027
-# ╟─c1882a6e-8498-47c0-a253-806ffac2905c
+# ╠═c1882a6e-8498-47c0-a253-806ffac2905c
 # ╟─7442f2ba-fa0f-447e-b96f-4460b40681d1
 # ╟─242eb89c-f3dc-4a7d-88cb-656ecb781625
-# ╠═36b1c764-b4fb-4a8f-88cb-531a2d50f675
+# ╟─36b1c764-b4fb-4a8f-88cb-531a2d50f675
 # ╟─7df5c3fb-73e6-4fdf-8e0c-9c3ae37949c1
 # ╟─2ec32693-8f65-42e4-b732-871e83682bce
-# ╠═0dd1e635-194a-4408-986b-0c373d74da24
+# ╟─0dd1e635-194a-4408-986b-0c373d74da24
 # ╟─bfab1cf4-46fb-4ac5-bb2a-d3d34b3f1059
+# ╟─093b7025-5223-4210-ba66-ef26c396adb4
 # ╠═52d95f0b-2434-410e-b1d8-c562a022c588
 # ╠═da8a3284-b2aa-4460-b7d9-6b1c5d62656b
 # ╠═5bb40ea9-4bc9-4293-ac2b-0d9c290d699d
 # ╟─e9b3880c-7fca-4051-b5ee-353dff46b455
-# ╠═4df99898-d263-423a-b738-cb8267b93b23
+# ╟─4df99898-d263-423a-b738-cb8267b93b23
 # ╠═64e7974a-7a02-45c0-be2f-c6b795c91754
 # ╠═464ff9fe-093d-4dc9-84e6-8b4afcacbcdd
+# ╟─17e2d309-ec22-4064-a830-684cf93d3a69
 # ╟─69a242da-d450-497e-8756-dcf2411e8afe
 # ╠═a8b009a0-0f03-4495-96a1-8e1a10e33c4e
 # ╟─6ec44376-13f9-4b72-a769-f4685d67f9f3
@@ -2510,7 +2722,7 @@ version = "3.6.0+0"
 # ╟─53a7a3e7-f50a-45e2-98dd-96c3141cbece
 # ╠═78dc2aee-7c87-4166-95c9-04b221104a6b
 # ╟─33f95891-d999-4846-afcc-d787893f2e18
-# ╠═ca5fe2de-bfe9-4506-80d8-07648e5becc1
+# ╟─ca5fe2de-bfe9-4506-80d8-07648e5becc1
 # ╠═504584bf-13a0-497e-a906-614d76a3c68c
 # ╟─5e08de73-5755-4bb6-97b6-4fbbc159c824
 # ╟─141e6c22-a0c2-4f6e-8d4c-38c97ba0c3ad
