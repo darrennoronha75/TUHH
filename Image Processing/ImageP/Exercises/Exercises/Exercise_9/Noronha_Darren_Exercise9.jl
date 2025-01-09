@@ -449,18 +449,16 @@ Well, this kind of barcodescanner seems to have some issues with zebras, as it d
 
 # ╔═╡ 4df99898-d263-423a-b738-cb8267b93b23
 md"
+**Summary of My Approach**
+- The detection task is split into detecting horizontal and vertical stripe patterns.
+- The initial solution was refined with custom parameters (based on testing) to better capture the stripes in both directions. While this may not work universally, it performs well for the provided zebra images.
+- An Opening Operator was added to improve vertical stripe detection in the binary image.
+- Since the problem assumes only a single zebra in the image, I merged the bounding boxes from both orientations into one. This approach assumes the zebra will not be split across multiple areas in the image. (very abnormal)
+- This combined bounding box solution has been validated on simple zebra images, though it doesn't work as effectively on more complex images.
 
-**A Brief Summary of my Approach** - Technical Solution
-- Breakdown ofthe Detection Problem into Horizontal and Vertical Detection of Stripe Patterns
-- The solution from 1a is refactored towards both approaches, with custom parameters (found through testing) applied towards best finding the stripe patterns along both orientations. These may not work for the general case but seem to do decent for the two provided zebra images.
-- This time, I also use the Opening Operator to aid in vertical stripe detection for the binary image.
-- Then, to combine both bounding boxes - and the fact that the problem asks only that a single zebra be detected - we expect only a single contiguous, zebra entity to be present in the image. (ie - it is unlikely the zebra would be in multiple places in a standard image.). This means, that we can merge the bounding boxes, all I needed to do at that point is to write a combination function that merged the bounding boxes.
-
-I have validated that the merged bounded box solution as described above works atleast for some zebra images which are simple, that are not among the instructor provided images.
-
-**Drawbacks/Caveats of My Approach**
-- Bounding Box draw behaviour may be undefined around image boundaries. (as indexes outside Images may be returned in those cases, although I have not deeply tested this.)
-- My current solution does not work that great for zebra heads. Atleast if the zebra is facing its side to the image-taker. I would try to write another detector solely for zebra heads - these have a kind of triangular shape.
+**Drawbacks and Limitations**
+- The bounding box behavior may be undefined near image edges, as it could result in out-of-bounds index errors. This hasn't been fully tested.
+- The solution struggles with detecting zebra heads, especially when the zebra is side-facing. A separate detector for zebra heads (which have a triangular shape) may be needed.
 "
 
 # ╔═╡ 64e7974a-7a02-45c0-be2f-c6b795c91754
@@ -672,10 +670,8 @@ In this exercise we want to extand the basic morphological operations to graysca
 
 # ╔═╡ a8b009a0-0f03-4495-96a1-8e1a10e33c4e
 function myerode_g(A, se=ones(Bool,3,3))
-	@assert isodd.(size(se)) == (true, true)
-	
-	out = missing
-
+	@assert isodd.(size(se)) == (true, true)	
+	out = mapwindow(B -> minimum(B), A, size(se))
 	return out
 end
 
@@ -688,9 +684,7 @@ md"
 # ╔═╡ 57f59e8a-200e-411d-affb-f53fed6c10e1
 function mydilate_g(A, se=ones(Bool,3,3))
 	@assert isodd.(size(se)) == (true, true)
-
-	out = missing
-	# replace the missing-placeholder
+	out = mapwindow(B -> maximum(B), A, size(se))
 	return out
 end
 
@@ -702,8 +696,8 @@ md"
 
 # ╔═╡ 78dc2aee-7c87-4166-95c9-04b221104a6b
 function myopening_g(A, se=ones(Bool,3,3))
-	# replace the missing-placeholder
-	return missing
+	# Opening is Erosion with Kernel followed by Dilation
+	return mydilate_g(myerode_g(A,se),se)
 end
 
 # ╔═╡ ca5fe2de-bfe9-4506-80d8-07648e5becc1
@@ -715,7 +709,7 @@ md"
 # ╔═╡ 504584bf-13a0-497e-a906-614d76a3c68c
 function myclosing_g(A, se=ones(Bool,3,3))
 	# replace the missing-placeholder
-	return missing
+	return myerode_g(mydilate_g(A,se),se)
 end
 
 # ╔═╡ 141e6c22-a0c2-4f6e-8d4c-38c97ba0c3ad
@@ -726,8 +720,8 @@ md"
 
 # ╔═╡ 0d484b03-550b-4634-8c87-67add9e94f34
 function mytophat(A, se=ones(Bool,3,3))
-	# replace the missing-placeholder
-	return missing
+	# Perform top-hat transform: A - Opening(A)
+    return A .- myopening_g(A, se)
 end
 
 # ╔═╡ 0fd94d94-8038-4859-9f14-a5e2b3be247a
@@ -738,8 +732,8 @@ md"
 
 # ╔═╡ 81462831-5bfe-42a2-8c40-e53f5e7ecaad
 function mybottomhat(A, se=ones(Bool,3,3))
-	# replace the missing-placeholder
-	return missing
+	# Perform top-hat transform: A - Opening(A)
+    return myclosing_g(A, se) .- A
 end
 
 # ╔═╡ 3bebf212-8561-40fa-b98a-438ad67e224d
@@ -751,15 +745,48 @@ Given an arbitrary image of a car, one can use the top hat operator with a recta
 "
 
 # ╔═╡ 5e893061-c1a6-49b6-b374-781be5ffc325
-function myspeedcamera(A;size=(5,13))
-	# replace the missing-placeholder
-	return missing
+function myspeedcamera(A; size=(5, 13))
+    image = deepcopy(A)
+
+	#Applying Grayscale onto Image
+	image = Gray.(image)
+    # Print the type of A (use typeof instead of type)
+
+
+    # Creating Structuring Element based on the given kernel size (for grayscale, use Int or Float)
+ #    se = ones(Bool, 5, 1)  # Grayscale structuring element, assuming grayscale image
+	# # println(se)
+
+    # Applying Top Hat and Bottom Hat Operators on the Image
+	image = mybottomhat(image, ones(Bool,(5,5)))
+    image = mytophat(image, ones(Bool,(13,13)))
+
+
+    return image
 end
+
+
+# ╔═╡ 9fd56335-7ef6-472d-8a98-960ce5a24093
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+x = [ 0.447059   0.47451   0.160784   0.670588  0.0431373  0.243137
+ 0.14902    0.341176  0.698039   0.0       0.0627451  0.0823529
+ 0.509804   0.176471  0.588235   0.545098  0.0627451  0.376471
+ 0.0862745  0.627451  0.0862745  0.172549  0.337255   0.313725
+ 0.588235   0.184314  0.105882   0.129412  0.262745   0.207843
+ 0.32549    0.501961  0.0        0.129412  0.635294   0.286275]
+Gray.(x)
+end
+  ╠═╡ =#
+
+# ╔═╡ 42aba8b3-385c-42ef-9993-b11747423ba8
+Gray.(testimg)
 
 # ╔═╡ 68ad911d-ea59-4712-b33a-d07acdfc54a8
 begin
-	#licenseplate1 = 
-	#licenseplate2 = 
+	licenseplate1 = myspeedcamera(car1)
+	licenseplate2 = myspeedcamera(car2)
 end;
 
 # ╔═╡ 45dde6b5-c17b-4d2b-9ef1-83071c7a62be
@@ -2715,7 +2742,7 @@ version = "3.6.0+0"
 # ╟─17e2d309-ec22-4064-a830-684cf93d3a69
 # ╟─69a242da-d450-497e-8756-dcf2411e8afe
 # ╠═a8b009a0-0f03-4495-96a1-8e1a10e33c4e
-# ╟─6ec44376-13f9-4b72-a769-f4685d67f9f3
+# ╠═6ec44376-13f9-4b72-a769-f4685d67f9f3
 # ╟─ae60a433-303d-4a3a-8718-1b1fe3617614
 # ╠═57f59e8a-200e-411d-affb-f53fed6c10e1
 # ╟─a49dcfc1-b87d-4ea1-8e38-696dc5c4471a
@@ -2733,8 +2760,10 @@ version = "3.6.0+0"
 # ╟─c3180d85-ec29-4770-9921-29cde951bf16
 # ╟─3bebf212-8561-40fa-b98a-438ad67e224d
 # ╠═5e893061-c1a6-49b6-b374-781be5ffc325
-# ╟─5eed4655-1f5a-421e-a588-9d116c77b259
-# ╟─68ad911d-ea59-4712-b33a-d07acdfc54a8
+# ╠═9fd56335-7ef6-472d-8a98-960ce5a24093
+# ╠═42aba8b3-385c-42ef-9993-b11747423ba8
+# ╠═5eed4655-1f5a-421e-a588-9d116c77b259
+# ╠═68ad911d-ea59-4712-b33a-d07acdfc54a8
 # ╟─45dde6b5-c17b-4d2b-9ef1-83071c7a62be
 # ╟─4c3c7122-de75-4c8a-93eb-5a8c63a3f10c
 # ╟─00000000-0000-0000-0000-000000000001
