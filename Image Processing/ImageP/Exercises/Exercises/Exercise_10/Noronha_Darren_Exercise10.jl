@@ -116,6 +116,17 @@ After dividing an image into parts it should be decided for each part, if it con
 Check your function on the image `page` with parameters `size=(10,10), nbins=20, c=0.0001` and save the result as an image `lt_page`.**
 "
 
+# ╔═╡ f1784483-e816-48e1-ad76-d9808f866c63
+md"
+
+I have attempted a stepwise solution for this problem. The code is primarily contained in my_local_binarize, with the other helper functions and functionalities abstracted out, for easy readability.
+
+My Notes
+- I have not been able to work out properly how we should apply the thresholding for the uniform area ('Classify a region as zero or one') and what it means from an algorithmic perspective.
+- To this end, I have chosen an arbitrary threshold value that when applied against the mean intensity, gives an output closed to what would be the expected result. (threshold ~ 0.95 to 0.99 against mean-intensity)
+- I am looking forward to check the solutions and will try to figure out the logic in the meantime.
+"
+
 # ╔═╡ 832dbf36-bb66-4017-9dba-b0e8fab7dfbe
 begin
 # ########################################################
@@ -136,13 +147,12 @@ function my_local_binarize(img,size,nbins,c)
 
 	# Step 3 - Calculate Uniform Region Map for image set by checking against provided threshold 'c'
 	uniformity_map = variance_image_set .< c
-	print(uniformity_map)
 
-	# Step 4.1 - Treating Non-Uniform Areas
-	result_set = map((img, uniformity) -> uniformity == 1 ? apply_otsu_thresholding(img, nbins) : img, divided_image_set, uniformity_map)
+	# Step 4.1 - Treating Non-Uniform Areas - Apply Otsu's Thresholding
+	result_set = map((img, uniformity) -> uniformity == 0 ? apply_otsu_thresholding(img, nbins) : img, divided_image_set, uniformity_map)
 	
-	# Step 4.2 - Treating Uniform Areas
-	result_set = map((img, uniformity) -> uniformity == 0 ? apply_mean_intensity_thresholding_for_uniform_images(img) : img, result_set, uniformity_map)
+	# Step 4.2 - Treating Uniform Areas - Apply Mean Intensity Thresholding
+	result_set = map((img, uniformity) -> uniformity == 1 ? apply_mean_intensity_thresholding_for_uniform_images(img) : img, result_set, uniformity_map)
 
 	#Step 5 - Combine Image Set and return combined image
 	img = combine_subimage_set(result_set)
@@ -169,14 +179,22 @@ end
 # Function to apply Otsu Thresholding with given method on provided subimage
 function apply_otsu_thresholding(img, nbins)	
 	threshold_value = t_otsu(img, nbins)
-    return img .> threshold_value .* img
+    return img .> threshold_value
 end
 	
 # Function to classify a region as Zero or 1 based on mean intensity.
-function apply_mean_intensity_thresholding_for_uniform_images(img)
+function apply_mean_intensity_thresholding_for_uniform_images(img; threshold = 0.99)
     mean_intensity = mean(img)
-	mean_intensity = mean_intensity * 0.77
-    return (img .> mean_intensity)
+    
+    # If mean intensity is greater than 0.5, set the entire image to 0
+    if mean_intensity > threshold
+        img .= 0  # Set all pixel values in img to 0
+    # If mean intensity is less than or equal to 0.5, set the entire image to 1
+    else
+        img .= 1  # Set all pixel values in img to 1
+    end
+    
+    return img
 end
 	
 # Function to combine provided Subimage Set
@@ -2428,6 +2446,7 @@ version = "1.4.1+2"
 # ╟─3b009cac-6c74-4a32-8a4e-e9ca00e33f2d
 # ╟─7b336973-221e-4223-a76d-778e9c40e1bb
 # ╟─cca5377d-246f-4d0d-a621-1816c5c1a841
+# ╟─f1784483-e816-48e1-ad76-d9808f866c63
 # ╠═832dbf36-bb66-4017-9dba-b0e8fab7dfbe
 # ╠═eaee882c-bb5c-4810-816a-a1821ea256d5
 # ╟─ba493161-3c82-4ef1-b1fa-bed4d88f61b6
@@ -2442,7 +2461,7 @@ version = "1.4.1+2"
 # ╟─6790bc92-e678-4f4f-8373-33fd9b4c219e
 # ╟─e36f2656-c30c-4636-ad19-8c4f3dce788e
 # ╟─aa02109c-0d51-4f4b-802d-e952b312baae
-# ╟─45e46ed3-a11e-40b9-bd21-e57116145ac1
+# ╠═45e46ed3-a11e-40b9-bd21-e57116145ac1
 # ╟─4c3c7122-de75-4c8a-93eb-5a8c63a3f10c
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
