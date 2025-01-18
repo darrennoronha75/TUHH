@@ -117,10 +117,73 @@ Check your function on the image `page` with parameters `size=(10,10), nbins=20,
 "
 
 # ╔═╡ 832dbf36-bb66-4017-9dba-b0e8fab7dfbe
+begin
+# ########################################################
+# ========================================================
+# Main Function
+# ========================================================
+# ########################################################
+
 function my_local_binarize(img,size,nbins,c)
-	# replace the identity-placeholder
-	out = copy(img)
-	return out
+
+	img = deepcopy(img)
+	
+	# Step 1 - Apply the Divide Function on the given Image, store Results
+	divided_image_set = divide_image(img, size)
+
+	# Step 2 - Calculate Variance for each subimage, store results in array
+	variance_image_set = calculate_image_variance.(divided_image_set)
+
+	# Step 3 - Calculate Uniform Region Map for image set by checking against provided threshold 'c'
+	uniformity_map = variance_image_set .< c
+	print(uniformity_map)
+
+	# Step 4.1 - Treating Non-Uniform Areas
+	result_set = map((img, uniformity) -> uniformity == 1 ? apply_otsu_thresholding(img, nbins) : img, divided_image_set, uniformity_map)
+	
+	# Step 4.2 - Treating Uniform Areas
+	result_set = map((img, uniformity) -> uniformity == 0 ? apply_mean_intensity_thresholding_for_uniform_images(img) : img, result_set, uniformity_map)
+
+	#Step 5 - Combine Image Set and return combined image
+	img = combine_subimage_set(result_set)
+	
+	return Gray.(img)
+end
+
+# ########################################################
+# ========================================================                    
+# Helper Functions
+# ========================================================
+# ########################################################
+
+# Function to apply provided Division Function and return Subimage Set
+function divide_image(img, size)
+	return divide(img, size)
+end
+
+# Function to calculate Variance for a provided Subimage
+function calculate_image_variance(img)
+	return var(img)
+end
+
+# Function to apply Otsu Thresholding with given method on provided subimage
+function apply_otsu_thresholding(img, nbins)	
+	threshold_value = t_otsu(img, nbins)
+    return img .> threshold_value .* img
+end
+	
+# Function to classify a region as Zero or 1 based on mean intensity.
+function apply_mean_intensity_thresholding_for_uniform_images(img)
+    mean_intensity = mean(img)
+	mean_intensity = mean_intensity * 0.77
+    return (img .> mean_intensity)
+end
+	
+# Function to combine provided Subimage Set
+function combine_subimage_set(subimg_set)
+	return combine(subimg_set)
+end
+	
 end
 
 # ╔═╡ eaee882c-bb5c-4810-816a-a1821ea256d5
@@ -263,7 +326,7 @@ TestImages = "~1.8.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "8de4b0abf22ca000aebd69c441120bebb48f5134"
 
@@ -2360,8 +2423,8 @@ version = "1.4.1+2"
 # ╟─22b30802-5e6f-4563-9bb3-a280bd451cd0
 # ╟─7db857a5-099a-40bd-ab3c-9d1a6a43d414
 # ╟─c1bb78ed-02c6-4890-92d5-c058e2468143
-# ╟─d5b0db15-fc81-422c-9d1b-6faf8c1c11ba
-# ╟─cf852fbb-5c65-4b2e-be0e-74b2e7a0bfd3
+# ╠═d5b0db15-fc81-422c-9d1b-6faf8c1c11ba
+# ╠═cf852fbb-5c65-4b2e-be0e-74b2e7a0bfd3
 # ╟─3b009cac-6c74-4a32-8a4e-e9ca00e33f2d
 # ╟─7b336973-221e-4223-a76d-778e9c40e1bb
 # ╟─cca5377d-246f-4d0d-a621-1816c5c1a841
