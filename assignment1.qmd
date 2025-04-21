@@ -1,0 +1,187 @@
+---
+title: "Assignment I - Graphical Causal Models"
+author: "Darren Noronha"
+format: pdf
+jupyter: python3
+fontsize: 10pt
+mainfont: "Times New Roman"
+linestretch: 1.5
+toc: true
+number-sections: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+<!-- Rendering Section -->
+
+# Important Notes for the Homework
+
+- The attached .qmd file would include all the code as relevant to the submission. In the interest of keeping the pdf output short and succint, certain sections/parts dealing with data cleaning are kept hidden in pdf, but can be viewed in the .qmd file. A log of changes made in this regard (pdf-visible) are included in the final section, for my own personal and evaluation reference.
+
+# Dataset Selection and Scenario Description
+I have chosen the Credit Card Default dataset for this assignment.  
+This dataset contains information on credit card clients in Taiwan, including demographic details, credit history, payment behavior, and default status. It is widely used for exploring factors influencing credit default and for building predictive models in financial risk analysis.
+
+```python
+import numpy as np
+```
+
+
+## On Considerations for Dataset Selection
+There are two key considerations for this dataset selection:  
+- Any hypothesis tested in this analysis will only validate or refute the assumptions made for the specific period during which this dataset was created (circa 2010s) and for the Taiwan region. It would be inappropriate to generalize the findings to a broader population.  
+- The dataset consists of a single file sourced from the UCI Repository. This was chosen for simplicity in analysis. While datasets with multiple files may offer richer content, they often require additional effort to reconcile or join data and tables. Given time constraints, this simpler dataset was selected to streamline the analysis process.
+
+All things considered - this dataset can present a good start-off point on building a causal analysis framework to test multiple hypothetical scenarios, and these methods can then be extended to larger datasets.
+
+## Options for Scenario Description
+
+To test suitable hypotheses for this assignment, it was specified in the lectures that a causal diagram with at least five nodes (nodes ~ variables) should be constructed. This ensures a sufficiently complex scenario for analysis.
+Towards this end - I have chosen the hypothesis mentioned below - 
+
+
+### Gender → Default as a Hypothesis
+
+**Question**  
+Are women more likely to be risk-averse and, therefore, default less?
+The alternative question is - Do men default more than women?
+Underlying Question - Does gender play a direct causal role in determining if the person would default?
+
+**Causal Considerations**  
+- **Possible Mediators**: Behavioral traits (e.g., payment history, bill amounts).  
+- **Possible Confounders**: Age, education level, income, marital status.  
+- **Possible Colliders**: Credit limit (influenced by both gender and past financial behavior).
+
+**Intuition** - The relationship can never be so simple - it is possible that gender does play a role, but the probability of there being tertiary confounding relationships cannot be discounted - trying to build a reliable causal model will inform the further steps in this assignment. 
+
+**Literature Supporting This Hypothesis** 
+The hypothesis for gender to play a role in credit default scenarios is a very vague and general statement, if considered critically.
+Nevertheless, some general literature and sociological studies that inform/support the direction of this hypothesis are ennumerated below.
+
+<!-- Include Literature here -->
+
+
+---
+# Graphical Causal Model
+
+## On Considerations for DAG Creation and Associated Diagrams
+## Final Graphical Causal Model selected
+
+# Identification of Causal Effects
+
+<!-- ::: {.content-visible unless-format="pdf"} -->
+# Structure Learning and Sensitivity Analysis
+<!-- ::: -->
+
+## Applying the PC Algorithm
+
+## Applying the Score Based Approach
+
+# Reflection and Critical Evaluation
+
+# Documented Use of Artificial Intelligence for this Assignment
+
+
+1. Using ChatGPT towards Finding an initial analysis structure to work with, keeping tasks/assignment sections in mind
+- **Associated LLM Prompt:** [ChatGPT Prompt](https://chatgpt.com/share/680609dc-fb84-8004-99b6-7321ea7c8ee1)
+- **Explanation** As it is advisable to work within a rigid framework while performing an experiment, I crafted a prompt to ask ChatGPT to advise me on structuring the initial analysis in keeping with industry practices. While this would not be an 'experiment' but more of a 'toy task,' it still helps simplify the flow of information and decision-making.
+Github Copilot/ChatGPT was also used to summarize/correct for clarity while writing the explanation content for some paragraphs. The final thoughts expressed in the above submission are completely my own.
+
+2. Generating Causal Considerations for different Hypothesis Types
+- **Associated LLM Prompt:** [ChatGPT Prompt](https://chatgpt.com/share/680628d2-0b70-8004-b5c1-02445b2ee854)
+- **Explanation** While there are initial common sense hypotheses we can construct right off the bat - I decided it would be prudent to have an LLM check if there are confounding/mediating relationships in the overall structure, that may be possible, that I could overlook, due to just being simply unaware of the dynamic. This was a very fruitful prompt that helped me consider information in a different, more expansive way than before.
+
+3. Grammatical Correction, Formatting and proper framing of Ideas
+4. Quickly Building Code Skeletons with ChatGPT
+
+
+# Log
+
+1. Dataset on import initially shows the column headers as the first row, this is corrected.
+2. Dataset on import initially has Gender column set to 1/2 (Categorical). These are left as is, but are interpreted appropriately in the visualizations and appropriate slides.
+
+
+
+<!-- Notes -->
+
+<!-- My approach for each hypothesis is as follows:  
+1. Begin with a simple statement or question, based on common knowledge, that could potentially be true and validated through statistical (hypothesis) testing.  
+2. Identify variables that could act as confounders or mediators for these statements. Potential collider relationships are also considered.  
+3. Research and document relevant literature or studies—both general to the global population and specific to Taiwan that support the hypothesis from a 'naive' perspective. Similar scenarios from other regions (e.g., studies from Hong Kong) are also considered to construct these arguments. For example, if a study from Hong Kong suggests that gender influences default scenarios, it can help support the hypothesis. -->
+
+<!-- 
+Other Hypotheses I have considered
+
+### Hypothesis B – Age → Default
+
+**Question**  
+Are younger individuals more likely to default due to financial inexperience?
+
+**Causal Considerations**  
+- **Possible Mediators**: Payment delays, lower credit limits.  
+- **Possible Confounders**: Education level, income, gender.  
+- **Possible Colliders**: Education (influenced by both age and financial capability).
+
+---
+
+### Hypothesis C – Marital Status → Default
+
+**Question**  
+Could being married make a person less likely to default, possibly due to joint decision-making or increased financial responsibility?
+
+**Causal Considerations**  
+- **Possible Mediators**: Access to higher credit limits, better repayment behavior.  
+- **Possible Confounders**: Age, education, gender.  
+- **Possible Colliders**: Household income (influenced by both marital status and financial history).
+
+---
+`
+### Hypothesis D – Education Status → Default
+
+**Question**  
+Does being more educated make a person more or less likely to default?
+
+**Causal Considerations**  
+- **Possible Mediators**: Increased credit access, responsible payment behavior.  
+- **Possible Confounders**: Age, income, marital status.  
+- **Possible Colliders**: Career progression, income progression.
+
+---
+
+### Hypothesis E – Credit Limit → Default
+
+**Question**  
+Can a higher credit limit reduce the likelihood of default, as banks are more likely to increase credit limits for individuals who default less frequently?
+
+**Causal Considerations**  
+- **Possible Mediators**: Increased spending capacity, improved repayment behavior.  
+- **Possible Confounders**: Income, education, age.  
+- **Possible Colliders**: Credit scoring mechanisms (influenced by both credit limit and payment history).
+ -->
+
+
+<!-- Trying to find out which libary is good for which task
+
+1. Causal-learn:
+   - Capabilities: This library is specifically designed for causal discovery from observational data. It uses various algorithms to infer causal graphs that reveal potential causal relationships directly from data.
+   - Use Case: Ideal for scenarios where the causal structure is not well understood and needs to be discovered from the data using statistical and machine learning techniques.
+
+2. pgmpy:
+   - Capabilities: While not primarily a causal discovery tool, pgmpy provides functionalities for learning both the structure and parameters of Bayesian Networks from data. These networks can represent causal relationships.
+   - Use Case: Applicable when you want to learn a probabilistic graphical model from data, which can be interpreted causally if additional assumptions (like causal Markov condition and faithfulness) are met.
+
+3. dagitty:
+   - Capabilities: Primarily used for testing causal models rather than discovering them directly from raw data. It assumes some prior knowledge about causal relationships to visualize and analyze possible causal scenarios.
+   - Use Case: More useful for refining and validating discovered causal models rather than initial discovery without some prior assumptions or structure. -->
+
+
+<!-- Rough Notes (gpt generated) on considerations for Collider 
+Unconditioned Collider:
+
+If you do not condition on the collider (e.g., do not include it in your analysis), the paths through the collider remain blocked.
+In this case, Gender and Default are not spuriously associated through Credit Limit.
+Conditioned Collider:
+
+If you condition on the collider (e.g., include Credit Limit in your analysis or stratify by it), you open a backdoor path between Gender and Default through Past Financial Behavior.
+This can introduce collider bias, creating a spurious association between Gender and Default that does not actually exist. -->
